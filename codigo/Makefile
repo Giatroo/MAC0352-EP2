@@ -1,15 +1,19 @@
 DIRNAME = ep2-lucas_lucas
-EPOBJS = ep2.o
-CFLAGS = -Wall -g -pedantic -Wno-unused-result -fsanitize=address
-COMPILER = gcc
+CLIENTOBJS = ep2-client.o util.o client-functionality.o client-cript.o
+SERVEROBJS = ep2-server.o util.o server-functionality.o server-io.o server-cript.o
+CPPFLAGS = -Wall -g -pedantic -Wno-unused-result
+COMPILER = g++
 
-default : ep2
+default : ep2-client ep2-server
 
-ep2 : $(EPOBJS)
-	$(COMPILER) $(CFLAGS) $(EPOBJS) -o ep2
+ep2-client : $(CLIENTOBJS)
+	$(COMPILER) $(CPPFLAGS) $(CLIENTOBJS) -o ep2-client
 
-%.o: %.c
-	$(COMPILER) $(CFLAGS) -c $<
+ep2-server : $(SERVEROBJS)
+	$(COMPILER) $(CPPFLAGS) $(SERVEROBJS) -o ep2-server
+
+%.o: %.cpp
+	$(COMPILER) $(CPPFLAGS) -c $<
 
 tar:
 	rm -Rf ../$(DIRNAME)
