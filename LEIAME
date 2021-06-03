@@ -1,0 +1,12 @@
+Esse é o projeto para o Exercício-Projeto 2 de MAC0352 - Redes de Computadores e
+Sistemas Distribuídos do IME-USP, ministrada pelo Prof. Dr. Daniel Macêdo
+Batista. Ele foi realizado pelos alunos Lucas Paiolla Forastiere (NUSP:
+11221911) e Lucas Hiroshi Harada (NUSP: 10737081)
+
+- TODO: atualizar como compilar e executar: <03-06-21, Paiolla> -
+Para compilar os binários basta rodar:
+    make
+
+Para executar o ep2:
+    ./ep1 p,
+onde p é a porta utilizada pelo broker.
