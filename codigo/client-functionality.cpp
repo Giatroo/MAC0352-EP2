@@ -7,8 +7,6 @@
 
 std::string opponent;
 
-void pingback() { }
-
 void create_user(std::string name, std::string password) { }
 
 bool user_login(std::string name, std::string password) { }
@@ -18,6 +16,8 @@ bool change_password(std::string cur_password, std::string new_password) { }
 void user_logout() { }
 
 void show_all_connected_users() { }
+
+void show_classifications(int n) { }
 
 bool invite_opponent(std::string user) { }
 
@@ -29,9 +29,9 @@ void surrender() { }
 
 void end_match(int score1) { }
 
-int get_ping() { }
+void pingback() { }
 
-void show_classifications(int n) { }
+int get_ping() { }
 
 void quit() { }
 

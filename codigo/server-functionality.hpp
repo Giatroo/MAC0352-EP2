@@ -2,11 +2,8 @@
 #define SERVER_FUNCTIONALITY_HPP
 
 #include <string>
-#include "server-io.hpp"
 
-// Pinga o usuário solicitando um pigback para checar se o usuário ainda está
-// conectado ou não. Se sim, retorna true, se não, retorna false.
-bool pingreq();
+#include "server-io.hpp"
 
 // Cria um novo usuário com nome name e senha password
 user *create_user(std::string name, std::string password);
@@ -25,6 +22,9 @@ void user_logout();
 // Mostra todos os usuários conectados ao servidor
 void show_all_connected_users();
 
+// Mostra os n primeiros classificados ou todos se -1
+void show_classifications(int n);
+
 // Convida client2 para jogar. Se ele não estiver online, não existir ou
 // estiver em partida, retorna false automaticamente. Caso contrário, envia um
 // prompt para o client2 perguntando se ele quer jogar ou não.
@@ -39,8 +39,8 @@ void start_match(std::string client1, std::string client2);
 // convite para a partida) e atualiza os scores de ambos os jogadores.
 void end_match(std::string client1, std::string client2, int score1);
 
-// Mostra os n primeiros classificados ou todos se -1
-void show_classifications(int n);
-
+// Pinga o usuário solicitando um pigback para checar se o usuário ainda está
+// conectado ou não. Se sim, retorna true, se não, retorna false.
+bool pingreq();
 
 #endif /* ifndef SERVER_FUNCTIONALITY_HPP */

@@ -12,9 +12,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#define LISTENQ 1
-#define MAXDATASIZE 100
-#define MAXLINE 4096
+#include "util.hpp"
 
 int main(int argc, char **argv) {
     int listenfd, connfd;
