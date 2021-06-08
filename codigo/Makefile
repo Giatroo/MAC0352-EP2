@@ -1,6 +1,6 @@
 DIRNAME = ep2-lucas_lucas
-CLIENTOBJS = ep2-client.o util.o client-functionality.o client-cript.o
-SERVEROBJS = ep2-server.o util.o server-functionality.o server-io.o server-cript.o
+CLIENTOBJS = ep2-client.o util.o client-functionality.o client-cript.o packages.o
+SERVEROBJS = ep2-server.o util.o server-functionality.o server-io.o server-cript.o packages.o
 CPPFLAGS = -Wall -g -pedantic -Wno-unused-result
 COMPILER = g++
 
@@ -12,7 +12,7 @@ ep2-client : $(CLIENTOBJS)
 ep2-server : $(SERVEROBJS)
 	$(COMPILER) $(CPPFLAGS) $(SERVEROBJS) -o ep2-server
 
-%.o: %.cpp
+%.o: %.cpp %.hpp
 	$(COMPILER) $(CPPFLAGS) -c $<
 
 tar:

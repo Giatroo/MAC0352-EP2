@@ -5,8 +5,14 @@
 
 #include "server-io.hpp"
 
+extern user_t *current_user;
+
+// Procura o usuário nos usuários existentes.
+// Se ele existir, o retorna. Caso contrário, retorna nullptr.
+user_t *find_user(std::string name);
+
 // Cria um novo usuário com nome name e senha password
-user *create_user(std::string name, std::string password);
+user_t *create_user(std::string name, std::string password);
 
 // Caso o usuário name exista e sua senha seja password, loja o usuário no
 // servidor e retorna true. Caso contrário, retorna false.

@@ -1,4 +1,3 @@
-#define _GNU_SOURCE
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netdb.h>
@@ -12,7 +11,49 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <iostream>
+
+#include "packages.hpp"
+#include "server-functionality.hpp"
+#include "server-io.hpp"
 #include "util.hpp"
+
+using namespace std;
+
+void cmd_switch(ustring recvline, int n) {
+    byte package_type;
+    string user, password, cur_password, new_password;
+    package_type = recvline[0];
+
+    switch (package_type) {
+        case CREATE_USER_PACKAGE: {
+            cout << "Creating user" << endl;
+            CreateUserPackage create_user_package = CreateUserPackage();
+            create_user_package.string_to_header(recvline, n);
+
+            user_t *new_user;
+            new_user = create_user(create_user_package.username,
+                                   create_user_package.password);
+            if (new_user == nullptr) {
+                cerr << "Nulo" << endl;
+            } else {
+                cout << *new_user << endl;
+            }
+            break;
+        }
+            // case LOGIN:
+            // cin >> user >> password;
+            // bool success_login;
+            // success_login = user_login(user, password);
+            // break;
+
+            // case PASSWD:
+            // cin >> cur_password >> new_password;
+            // bool success_change_pass;
+            // success_change_pass = change_password(cur_password,
+            // new_password); break;
+    }
+}
 
 int main(int argc, char **argv) {
     int listenfd, connfd;
@@ -20,11 +61,10 @@ int main(int argc, char **argv) {
     pid_t childpid;
     unsigned char recvline[MAXLINE + 1];
     ssize_t n;
+    current_user = nullptr;
 
-    /* TODO: Enviar uma mensagem caso os argumentos estejam errados <03-06-21, Paiolla> */
-    if (argc != 2) {
-        fprintf(stderr, "Uso: %s <Porta>\n", argv[0]);
-        fprintf(stderr, "Vai rodar um servidor MQTT na porta <Porta> TCP\n");
+    if (argc < 2) {
+        fprintf(stderr, "usage: %s <Port>\n", argv[0]);
         exit(1);
     }
 
@@ -47,10 +87,13 @@ int main(int argc, char **argv) {
         exit(4);
     }
 
+    // inicializa os usuários lendo eles do banco de dados
+    deserialize_users();
+
     printf("[Servidor no ar. Aguardando conexões na porta %s]\n", argv[1]);
     printf("[Para finalizar, pressione CTRL+c ou rode um kill ou killall]\n");
 
-    for (;;) {
+    while (1) {
         if ((connfd = accept(listenfd, (struct sockaddr *) NULL, NULL)) == -1) {
             perror("accept :(\n");
             exit(5);
@@ -61,9 +104,16 @@ int main(int argc, char **argv) {
             fprintf(stdout, "[Uma conexão aberta (PID = %d)]\n", getpid());
             close(listenfd);
 
+            fprintf(stdout, "Usuários:\n");
+            for (int i = 0; i < total_users[0]; i++) {
+                cout << *users[i] << endl;
+            }
+
             while ((n = read(connfd, recvline, MAXLINE)) > 0) {
                 recvline[n] = 0;
-                fprintf(stdout, "Recebido: '%s'\n", recvline);
+                fprintf(stdout, "Recebido: ");
+                print_in_hex(recvline, n);
+                cmd_switch(recvline, n);
             }
             printf("[Uma conexão fechada]\n");
             exit(0);
