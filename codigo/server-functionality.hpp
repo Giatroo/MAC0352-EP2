@@ -22,8 +22,9 @@ bool user_login(std::string name, std::string password);
 // igual, atualiza a senha para new_password.
 bool change_password(std::string cur_password, std::string new_password);
 
-// Desloga o usuário do servidor
-void user_logout();
+// Desloga o usuário do servidor.
+// Retorna false se não houver usuário logado.
+bool user_logout();
 
 // Mostra todos os usuários conectados ao servidor
 void show_all_connected_users();

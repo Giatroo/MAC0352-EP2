@@ -11,6 +11,7 @@ int cmd_str_to_int(std::string cmd) {
     if (cmd == "passwd") return PASSWD;
     if (cmd == "login") return LOGIN;
     if (cmd == "leaders") return LEADERS;
+    if (cmd == "list") return LIST;
     if (cmd == "begin") return BEGIN;
     if (cmd == "send") return SEND;
     if (cmd == "delay") return DELAY;
@@ -81,12 +82,13 @@ void write_string(ustring outstr, int &pos, std::string str_to_write) {
     ustring strlen = int_to_2byte_str(len);
     outstr[pos++] = strlen[0];
     outstr[pos++] = strlen[1];
+    free(strlen);
     for (int i = 0; i < len; ++i) { outstr[pos++] = str_to_write[i]; }
 }
 
-void read_string(ustring instr, int &pos, std::string &str_to_write) {
+void read_string(ustring instr, int &pos, std::string &str_to_read) {
     int len = byte_str_to_int(instr, pos);
     pos += 2;
-    str_to_write = std::string(len, ' ');
-    for (int i = 0; i < len; i++) { str_to_write[i] = (char) instr[pos++]; }
+    str_to_read = std::string(len, ' ');
+    for (int i = 0; i < len; i++) { str_to_read[i] = (char) instr[pos++]; }
 }

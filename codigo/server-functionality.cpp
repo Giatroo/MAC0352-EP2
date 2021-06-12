@@ -4,7 +4,7 @@
 #include "server-functionality.hpp"
 
 #include <cstring>
-#include <iostream> //temp
+#include <iostream>
 #include <string>
 
 #include "server-io.hpp"
@@ -69,23 +69,37 @@ bool user_login(std::string name, std::string password) {
 }
 
 bool change_password(std::string cur_password, std::string new_password) {
-   if (current_user == nullptr) {
-      std::cerr << "Not logged in" << std::endl;
-      return false;
-   }
+    if (current_user == nullptr) {
+        std::cerr << "Not logged in" << std::endl;
+        return false;
+    }
 
-   if (!strcmp(current_user->password, cur_password.c_str())) {
-      std::cerr << "Senha incorreta" << std::endl;
-      return false;
-   }
+    if (strcmp(current_user->password, cur_password.c_str())) {
+        std::cerr << "Senha incorreta" << std::endl;
+        return false;
+    }
 
-   set_str(current_user->password, new_password);
-   return true;
+    set_str(current_user->password, new_password);
+    return true;
 }
 
-void user_logout() { }
+bool user_logout() {
+    if (current_user == nullptr) {
+        std::cerr << "Not logged in" << std::endl;
+        return false;
+    }
 
-void show_all_connected_users() { }
+    current_user->connected = false;
+    current_user = nullptr;
+    std::cout << "Deslogado com sucesso" << std::endl;
+    return true;
+}
+
+void show_all_connected_users() {
+    std::cout << "Exibindo todos os usuários:" << std::endl;
+    for (int i = 0; i < *total_users; i++)
+        std::cout << *users[i] << std::endl << std::endl;
+}
 
 void show_classifications(int n) { }
 

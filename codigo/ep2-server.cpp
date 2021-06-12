@@ -28,8 +28,7 @@ void cmd_switch(ustring recvline, int n) {
     switch (package_type) {
         case CREATE_USER_PACKAGE: {
             cout << "Creating user" << endl;
-            CreateUserPackage create_user_package = CreateUserPackage();
-            create_user_package.string_to_header(recvline, n);
+            CreateUserPackage create_user_package = CreateUserPackage(recvline);
 
             user_t *new_user;
             new_user = create_user(create_user_package.username,
@@ -41,17 +40,52 @@ void cmd_switch(ustring recvline, int n) {
             }
             break;
         }
-            // case LOGIN:
-            // cin >> user >> password;
-            // bool success_login;
-            // success_login = user_login(user, password);
-            // break;
+        case LOGIN_PACKAGE: {
+            cout << "Logining in" << endl;
+            LoginPackage login_package = LoginPackage(recvline);
 
-            // case PASSWD:
-            // cin >> cur_password >> new_password;
-            // bool success_change_pass;
-            // success_change_pass = change_password(cur_password,
-            // new_password); break;
+            bool success_login = user_login(login_package.user_login,
+                                            login_package.user_password);
+            if (success_login == true) {
+                cout << "Sucesso" << endl;
+            } else {
+                cout << "Não sucesso" << endl;
+            }
+            break;
+        }
+        case CHANGE_PASSWORD_PACKAGE: {
+            cout << "Password change" << endl;
+            ChangePasswordPackage change_password_package =
+                ChangePasswordPackage(recvline);
+
+            bool success_change_pass =
+                change_password(change_password_package.cur_password,
+                                change_password_package.new_password);
+
+            if (success_change_pass == true) {
+                cout << "Sucesso" << endl;
+            } else {
+                cout << "Não sucesso" << endl;
+            }
+            break;
+        }
+        case LOGOUT_PACKAGE: {
+            cout << "Logout" << endl;
+            bool success_logout = user_logout();
+
+            if (success_logout == true) {
+                cout << "Sucesso" << endl;
+            } else {
+                cout << "Não sucesso" << endl;
+            }
+            break;
+        }
+
+        case REQUEST_ALL_CONNECTED_USERS_PACKAGE: {
+            cout << "Listing" << endl;
+            show_all_connected_users();
+            break;
+        }
     }
 }
 

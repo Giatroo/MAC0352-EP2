@@ -17,33 +17,62 @@ using namespace std;
 
 void cmd_switch(int sockfd) {
     string cmd;
-    string user, password, cur_password, new_password;
-    size_t len;
-    ustring line;
+    string username, password, cur_password, new_password;
+    ssize_t len;
+    uchar sendline[MAXLINE + 1];
+
     cout << "Digite um comando:" << endl;
     cin >> cmd;
-    cout << "cmd '" << cmd << "'" << endl;
 
     switch (cmd_str_to_int(cmd)) {
         case ADDUSER: {
-            cin >> user >> password;
-            CreateUserPackage *cup = new CreateUserPackage();
-            cup->username = user;
-            cup->password = password;
-            line = cup->header_to_string(len);
-            print_in_hex(line, len);
-            write(sockfd, line, len);
+            cin >> username >> password;
+            CreateUserPackage create_user_package =
+                CreateUserPackage(username, password);
+            len = create_user_package.header_to_string(sendline);
             break;
         }
-        case LOGIN: break;
+        case LOGIN: {
+            cin >> username >> password;
+            LoginPackage login_package = LoginPackage(username, password);
 
-        case PASSWD: break;
+            len = login_package.header_to_string(sendline);
+            break;
+        }
+        case LOGOUT: {
+            cout << "Deslogando" << endl;
+            LogoutPackage logout_package = LogoutPackage();
+
+            len = logout_package.header_to_string(sendline);
+            break;
+        }
+        case PASSWD: {
+            cin >> cur_password >> new_password;
+            ChangePasswordPackage change_password_package =
+                ChangePasswordPackage(cur_password, new_password);
+
+            len = change_password_package.header_to_string(sendline);
+            break;
+        }
+        case LIST: {
+            ReqConnectedUsersPackage req_connected_users_package =
+                ReqConnectedUsersPackage();
+
+            len = req_connected_users_package.header_to_string(sendline);
+            break;
+        }
+        case EXIT: {
+            cout << "Exiting" << endl;
+            /* TODO: Preciso dar free em algo? <12-06-21, Paiolla> */
+            exit(0);
+        }
     }
+    print_in_hex(sendline, len);
+    write(sockfd, sendline, len);
 }
 
 int main(int argc, char **argv) {
-    int sockfd, n;
-    char recvline[MAXLINE + 1];
+    int sockfd;
     struct sockaddr_in servaddr;
 
     if (argc != 3) {
@@ -72,9 +101,7 @@ int main(int argc, char **argv) {
 
     fprintf(stdout, "connected\n");
     string s;
-    while (1) {
-        cmd_switch(sockfd);
-    }
+    while (1) { cmd_switch(sockfd); }
 
     exit(0);
 }

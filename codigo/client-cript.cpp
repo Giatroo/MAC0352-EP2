@@ -5,7 +5,7 @@
 
 #include <string>
 
-std::string cript_user(std::string) { }
-std::string cript_password(std::string) { }
+std::string cript_user(std::string) { return nullptr;}
+std::string cript_password(std::string) { return nullptr; }
 
 #endif /* ifndef CLIENT_CRIPT_CPP */
