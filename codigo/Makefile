@@ -1,6 +1,6 @@
 DIRNAME = ep2-lucas_lucas
-CLIENTOBJS = ep2-client.o util.o client-functionality.o client-cript.o
-SERVEROBJS = ep2-server.o util.o server-functionality.o server-io.o server-cript.o
+CLIENTOBJS = ep2-client.o util.o client-functionality.o client-cript.o packages.o ttt-engine.o
+SERVEROBJS = ep2-server.o util.o server-functionality.o server-io.o server-cript.o packages.o
 CPPFLAGS = -Wall -g -pedantic -Wno-unused-result
 COMPILER = g++
 
@@ -41,4 +41,4 @@ tar:
 
 
 clean:
-	rm *.o ep2
+	rm *.o ep2-server ep2-client

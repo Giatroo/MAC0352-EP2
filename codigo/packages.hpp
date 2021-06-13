@@ -27,20 +27,22 @@ typedef enum {
 } package_t;
 
 class FixedHeader {
+public:
    byte header_type;
    byte remaning_length[2];
 
    FixedHeader();
-   FixedHeader(ustring recvline, size_t len);
+   FixedHeader(ustring recvline, ssize_t len);
 };
 
 class HeaderTemplate {
+public:
    FixedHeader fixed_header;
 
    HeaderTemplate();
-   HeaderTemplate(ustring recvline, size_t len);
+   HeaderTemplate(ustring recvline, ssize_t len);
 
-   virtual ustring header_to_string(size_t &len) = 0;
+   virtual ssize_t header_to_string(ustring line) = 0;
 };
 
 class LoginPackage : public HeaderTemplate {
@@ -52,6 +54,49 @@ class LoginAckPackage : public HeaderTemplate {
    byte connection_accepted;
 };
 
+class PingReqPackage : public HeaderTemplate {
+public:
+   PingReqPackage();
+   ssize_t header_to_string(ustring line);
+};
 
+class PingBackPackage : public HeaderTemplate {
+public:
+   PingBackPackage();
+   ssize_t header_to_string(ustring line);
+};
+
+class InviteOpponentPackage : public HeaderTemplate {
+public:
+   int cliente;
+   InviteOpponentPackage(int c);
+   ssize_t header_to_string(ustring line);
+};
+
+class InviteOpponentAckPackage : public HeaderTemplate {
+public:
+   int resp;
+   char * ip;
+   int port;
+   InviteOpponentAckPackage(int r);
+   ssize_t header_to_string(ustring line);
+   void string_to_header(ustring recvline);
+};
+
+class SendMovePackage : public HeaderTemplate {
+public:
+   int r, c;
+   SendMovePackage();
+   SendMovePackage(int r, int c);
+   ssize_t header_to_string(ustring line);
+   void string_to_header(ustring recvline);
+};
+
+class EndMatchPackage : public HeaderTemplate {
+public:
+   int pont;
+   EndMatchPackage(int p);
+   ssize_t header_to_string(ustring line);
+};
 
 #endif /* ifndef PACKAGES_HPP */

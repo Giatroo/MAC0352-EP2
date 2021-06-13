@@ -2,7 +2,22 @@
 #define CLIENT_FUNCTIONALITY_HPP
 
 #include <string>
+#include <arpa/inet.h>
+#include <errno.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <string.h>
+#include <unistd.h>
+#include "util.hpp"
+#include "packages.hpp"
+#include "ttt-engine.hpp"
 
+#include<sys/types.h>
+#include<signal.h>
+
+#define MAXLINE 4096
+#define LISTENQ 1
 // true se o jogador está em uma partida.
 extern bool user_playing;
 
@@ -39,26 +54,35 @@ void show_classifications(int n);
 // primeiro a jogar e quem será o X e começa a partida.
 // O jogador que convidou se torna o host da sessão e deve chamar end_match()
 // para enviar os resultados da partida para o servidor.
-bool invite_opponent(std::string user);
+InviteOpponentAckPackage invite_opponent(int sockfd, int uifd, \
+	int * wait_invitation);
+
+// Prepara a resposta a um convite e retorna essa resposta
+int answer_opponent(ustring recvline);
 
 // Começa a partida após definir quem é o primeiro a jogar e quem será o X.
-void start_match(bool moving_first, bool x);
+// Retorna a pontuação desse jogador no jogo ou -1 se houve um erro.
+int start_match(bool tipo, bool moving_first, bool x, int port, char * ip);
 
 // Envia um movimento na linha row e coluna col.
 // row e col devem ser números de 0 a 2.
-void send_move(int row, int col);
+void send_move(int r, int c, int connfd);
+
+// Pega o movimento recebido em recvline, atualiza na tabela e checa se 
+// houve um vencedor. Retorna 0 se o outro jogador desistiu e 1 caso contrário
+int get_move(Table * t, bool x, ustring recvline);
 
 // O jogador desiste da partida (perdendo automaticamente).
-void surrender();
+void surrender(int connfd);
 
 // Envia os resultados da partida para o servidor.
-void end_match(int score1);
+void end_match(int score1, int pipe);
 
 // Ao receber um pingreq, essa função é chamada para enviar um pingback.
-void pingback();
+void pingback(int pipe);
 
 // Retorna o ping entre o usuário e o jogador com quem ele está jogando.
-int get_ping();
+double get_ping(int pipe_to_read, int connfd);
 
 // Encerra as operações do cliente (pode ser chamada apenas depois de logout).
 void quit();
