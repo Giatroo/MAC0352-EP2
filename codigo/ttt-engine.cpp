@@ -22,8 +22,6 @@ void Table::build(){
 
 int Table::update(int r, int c, bool p){
 	r--, c--;
-	printf("Peca %d %d\n", (int)t[r][c], (int)' ');
-	if(t[r][c] != ' ') printf("Carai\n");
 	if(t[r][c] != ' ' || r > 2 || c > 2 || r < 0 || c < 0)
 		return 0;
 
@@ -58,10 +56,10 @@ int Table::winner(){
 }
 
 void Table::print(){
-	printf("-------------\n");
+	fprintf(stdout, "-------------\n");
 	for(int i = 0; i < 3; i++){
-		printf("| %c | %c | %c |\n", t[i][0], t[i][1], t[i][2]);
-		printf("-------------\n");
+		fprintf(stdout, "| %c | %c | %c |\n", t[i][0], t[i][1], t[i][2]);
+		fprintf(stdout, "-------------\n");
 	}
 }
 

@@ -18,14 +18,12 @@ void show_all_connected_users() { }
 
 void show_classifications(int n) { }
 
-InviteOpponentAckPackage invite_opponent(int sockfd, int uifd, \
-	int * wait_invitation) {
+InviteOpponentAckPackage invite_opponent(int sockfd, int uifd) {
 	int cliente;
 	unsigned char sndline[MAXLINE + 1], recvline[MAXLINE + 1];
    	scanf("%d", &cliente);
    	InviteOpponentPackage p(cliente);
    	int n = p.header_to_string(sndline);
-   	*wait_invitation = -1;
 
    	if(write(sockfd, sndline, n) < 0){
 		printf("Erro ao direcionar à saída :(\n");
@@ -37,9 +35,6 @@ InviteOpponentAckPackage invite_opponent(int sockfd, int uifd, \
 		if((int)recvline[3] == 1){
 		    printf("Usuário aceitou o jogo!\n");
 		    pa.string_to_header(recvline);
-						
-			int pont = start_match(false, true, false, pa.port, pa.ip);
-			end_match(pont, sockfd);
 		}
 		else
 			printf("Usuário recusou o jogo!\n");
@@ -109,11 +104,13 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char * ip) {
 	fprintf(stdout, "JogoDaVelha> ");
 	fprintf(stdout, "connected!\n");
 	
-	pid_t childpid_pai = getpid(), childpid;
+	pid_t childpid;
     pid_t * childpid_heartbeat = (pid_t *)global_malloc(sizeof(pid_t));
     pid_t * childpid_ui = (pid_t *)global_malloc(sizeof(pid_t));
-
+    pid_t * childpid_pai = (pid_t *)global_malloc(sizeof(pid_t));
     int * trava_shell = (int *)global_malloc(sizeof(int));
+
+    *childpid_pai = getpid();
 
 	int delay_fds[2];
    	if(pipe(delay_fds)){
@@ -133,14 +130,13 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char * ip) {
         	double val;
             if((val = get_ping(delay_fds[0], connfd)) == 0){
                 fprintf(stderr, "Cliente Morreu :(\n");
-                close(connfd);
-                kill(childpid_pai, SIGTERM);
-                kill(*childpid_ui, SIGTERM);
-            	break;
+                break;
             }
-            
             sleep(5);
         }
+
+		quit(childpid_pai, childpid_ui, childpid_heartbeat,\
+			trava_shell, t, connfd);
         return 0;
     }
 	else if((childpid = fork()) == 0){
@@ -157,45 +153,31 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char * ip) {
 		while(scanf("%s", recvline)){
 			if(*trava_shell) continue;
 			if(strcmp((char *)recvline, "send") == 0){
-				int r, c;
-				scanf("%d %d", &r, &c);
-				(*t).print();
-				if((*t).update(r, c, x) == 0){
-					printf("Posição ocupada! Faça um outro movimento\n");
-						fprintf(stdout, "JogoDaVelha> ");
+				int acabou;
+				if((acabou = send_move(t, x, connfd)) > -1){
+					quit(childpid_pai, childpid_heartbeat, childpid_ui,\
+					trava_shell, t, connfd);
+					return acabou;
+				}
+				else if(acabou == -1){
+					*trava_shell = 1;
 					continue;
 				}
-				send_move(r, c, connfd);
-				(*t).print();
-				if((*t).winner() == 1){
-			    	printf("Você ganhou!!\n");
-				   	close(connfd);
-					kill(childpid_pai, SIGTERM);
-					kill(*childpid_heartbeat, SIGTERM);
-				   	return 2;
-				}
-				else if((*t).winner() == 2){
-				   	printf("Empatou!!\n");
-				   	close(connfd);
-					kill(childpid_pai, SIGTERM);
-					kill(*childpid_heartbeat, SIGTERM);
-				   	return 1;
-				}
-				*trava_shell = 1;
-				continue;
 			}
 			else if(strcmp((char *)recvline, "end") == 0){
 				surrender(connfd);
-				kill(childpid_pai, SIGTERM);
-				kill(*childpid_heartbeat, SIGTERM);
+				quit(childpid_pai, childpid_heartbeat, childpid_ui,\
+					trava_shell, t, connfd);
 				return 0;
 			}
-			else
+			else{
 				printf("Comando inválido!\n");
+			}
+
 			fprintf(stdout, "JogoDaVelha> ");
 		}
-		kill(childpid_pai, SIGTERM);
-		kill(*childpid_heartbeat, SIGTERM);
+		quit(childpid_pai, childpid_heartbeat, childpid_ui,\
+			trava_shell, t, connfd);
 		return 0;
     }
     else{
@@ -210,37 +192,30 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char * ip) {
 				}
 			}
 			else if((int)recvline[0] == SEND_MOVE_PACKAGE){
-				if(get_move(t, x, recvline) == 0){
-					printf("O outro jogador desistiu. Você ganhou!!\n");
-					kill(*childpid_ui, SIGTERM);
-					kill(*childpid_heartbeat, SIGTERM);
-					close(connfd);
-					return 2;
-				}
-				(*t).print();
-				if((*t).winner() == 1){
-					printf("Outro jogador ganhou!!\n");
-					close(connfd);
-					kill(*childpid_ui, SIGTERM);
-					kill(*childpid_heartbeat, SIGTERM);
-					return 0;
-				}
-				else if((*t).winner() == 2){
-					printf("Empatou!!\n");
-					close(connfd);
-					kill(*childpid_ui, SIGTERM);
-					kill(*childpid_heartbeat, SIGTERM);
-					return 1;
+				int acabou;
+				if((acabou = get_move(t, x, recvline)) != -1){
+					quit(childpid_ui, childpid_heartbeat, childpid_pai,\
+						trava_shell, t, connfd);
+					return acabou;
 				}
 				*trava_shell = 0;
-				printf("JogoDaVelha> ");
 			}
 		}
+
+		quit(childpid_ui, childpid_heartbeat, childpid_pai,\
+			trava_shell, t, connfd);
 		return 0;
     }
 }
 
-void send_move(int r, int c, int connfd) {	
+int send_move(Table * t, bool x, int connfd) {	
+	int r, c;
+	scanf("%d %d", &r, &c);
+	if((*t).update(r, c, x) == 0){
+		fprintf(stdout, "Posição ocupada! Faça um outro movimento\n");
+		return -2;
+	}
+	
 	SendMovePackage p(r, c);
 	unsigned char sndline[MAXLINE + 1];
 	int n = p.header_to_string(sndline);
@@ -250,20 +225,47 @@ void send_move(int r, int c, int connfd) {
 		exit (11);
 	}
 	printf("Você jogou na casa (%d, %d)\n", r, c);
+	(*t).print();
+
+	if((*t).winner() == 1){
+		printf("Você ganhou!!\n");
+		return 2;
+	}
+	else if((*t).winner() == 2){
+		printf("Empatou!!\n");
+		return 1;
+	}
+	return -1;
 }
 
 int get_move(Table * t, bool x, ustring recvline){
 	SendMovePackage p;
 	p.string_to_header(recvline);
 
-	if(p.r == 0) return 0;
+	if(p.r == 0) {
+		printf("O outro jogador desistiu. Você ganhou!!\n");
+		return 2;
+	}
 
 	printf("Outro jogador jogou na casa (%d, %d).\n", p.r, p.c);
 	if((*t).update(p.r, p.c, !x) == 0){
 		printf("Erro no jogo da velha!\n");
 		exit (12);
 	}
-	return 1;
+	(*t).print();
+
+	if((*t).winner() == 1){
+		printf("Outro jogador ganhou!!\n");
+		return 0;
+	}
+	else if((*t).winner() == 2){
+		printf("Empatou!!\n");
+		return 2;
+	}
+
+	fprintf(stdout, "JogoDaVelha> ");
+	fflush(stdout);
+	return -1;
 }
 
 void surrender(int connfd) {
@@ -285,12 +287,12 @@ void end_match(int score1, int pipe) {
 	}
 }
 
-void pingback(int pipe) {
+void pingback(int fd) {
 	PingBackPackage p;
 	unsigned char sndline[MAXLINE + 1];
 
 	ssize_t n = p.header_to_string(sndline);
-	if(write(pipe, sndline, n) < 0){
+	if(write(fd, sndline, n) < 0){
 	    printf("Erro ao direcionar à saída :(\n");
 	    exit (11);
 	}
@@ -318,6 +320,13 @@ double get_ping(int pipe_to_read, int connfd) {
     	return 0;
 }
 
-void quit() { }
+void quit(pid_t * p1, pid_t * p2, pid_t * p3, int * trava, Table * t, int connfd) {
+	kill(*p1, SIGTERM);
+	kill(*p2, SIGTERM);
+	global_free(p1, sizeof(pid_t)), global_free(p2,sizeof(pid_t));
+	global_free(p3,sizeof(pid_t)), global_free(trava, sizeof(int));
+	global_free(t, sizeof(Table));	
+	close(connfd);
+}
 
 #endif /* ifndef CLIENT_FUNCTIONALITY_CPP */

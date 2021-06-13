@@ -33,11 +33,7 @@ int main(int argc, char **argv){
    	fprintf(stdout, "connected\n");
    	
 
-   	int saidafds[2], uifds[2];
-   	if(pipe(saidafds)){
-   		fprintf(stderr,"Erro ao criar pipe\n");
-   		exit (1);
-   	}
+   	int uifds[2];
    	if(pipe(uifds)){
    		fprintf(stderr,"Erro ao criar pipe\n");
    		exit (1);
@@ -46,78 +42,47 @@ int main(int argc, char **argv){
    	pid_t childpid_pai = getpid(), childpid;
     pid_t * childpid_saida = (pid_t *)global_malloc(sizeof(pid_t));
     pid_t * childpid_ui = (pid_t *)global_malloc(sizeof(pid_t));
-    int * wait_invitation = (int *)global_malloc(sizeof(int));
-    *wait_invitation = 0;
+    int * wait_invitation_ans = (int *)global_malloc(sizeof(int));
+    *wait_invitation_ans = 0;
     /*
 		-1 se está esperando resposta do convidado e -2 é o convidado e está esperando
 		o usuário
     */
 
    	if((childpid = fork()) == 0){
-   		// Saída
-   		*childpid_saida = getpid();
-   		while ((n = read(saidafds[0], recvline, MAXLINE)) > 0){
-   			
-   			if(write(sockfd, recvline, n) < 0){
-	            printf("Erro ao enviar pacote :(\n");
-	            exit (11);
-   			}
-   		}
-   	}
-   	else if((childpid = fork()) == 0){
    		*childpid_ui = getpid();
    		// UI
    		while(scanf("%s", recvline)){
-   			if(*wait_invitation == -1) continue;
-   			if(*wait_invitation == -2){
+   			if(*wait_invitation_ans == 1){
 				int resp = answer_opponent(recvline);
 
 				InviteOpponentAckPackage p(resp);
 				p.port = atoi(argv[3]);
 				n = p.header_to_string(sndline);
-				if(write(saidafds[1], sndline, n) < 0){
+				if(write(sockfd, sndline, n) < 0){
 		            printf("Erro ao direcionar à saída :(\n");
 		            exit (11);
 		        }
 
 				if(resp > 0){
 					int pont = start_match(true, false, true, atoi(argv[3]), NULL);
-					end_match(pont, saidafds[1]);
+					end_match(pont, sockfd);
 				}
 				
-				*wait_invitation = 0;
+				*wait_invitation_ans = 0;
    			}
    			else if(strcmp((char *)recvline, "invite") == 0){
-   				int cliente;
-   				scanf("%d", &cliente);
-   				InviteOpponentPackage p(cliente);
-   				n = p.header_to_string(sndline);
-   				*wait_invitation = -1;
+   				InviteOpponentAckPackage p(0);
+   				p = invite_opponent(sockfd, uifds[0]);
 
-	   			if(write(saidafds[1], sndline, n) < 0){
-		            printf("Erro ao direcionar à saída :(\n");
-		            exit (11);
-		        }
-
-		        if((n = read(uifds[0], recvline, MAXLINE)) > 0){
-		        	if((int)recvline[3] == 1){
-		      			printf("Usuário aceitou o jogo!\n");
-
-		      			InviteOpponentAckPackage p(0);
-		      			p.string_to_header(recvline);
-						
-						int pont = start_match(false, true, false, p.port, p.ip);
-						printf("Pontuacao %d\n", pont);
-						end_match(pont, saidafds[1]);
-		      		}
-		      		else
-						printf("Usuário recusou o jogo!\n");
-				}
-				else
-					printf("Erro de conexão :(\n");
-
-		      	*wait_invitation = 0;
-   			}
+   				if(p.resp == 1){
+   					int pont = start_match(false, true, false, p.port, p.ip);
+   					end_match(pont, sockfd);
+   				}
+   				else{
+   					printf("Usuário recusou o jogo!\n");
+   				}
+		    }
 		}
    	}
    	else{
@@ -126,9 +91,9 @@ int main(int argc, char **argv){
 	      	recvline[n] = 0;
 	      			
 	      	if(recvline[0] == PINGREQ_PACKAGE)
-	      		pingback(saidafds[1]);
+	      		pingback(sockfd);
 	      	else if(recvline[0] == INVITE_OPPONENT_PACKAGE){
-	      		*wait_invitation = -2;
+	      		*wait_invitation_ans = 1;
 	      		printf("Usuário %d está te convidando para jogar um jogo!\n", (int)recvline[3]);
 	      		printf("Aceita o convite?(Digite 1 se sim e 0 se não)\n");
 	      	}
@@ -140,7 +105,7 @@ int main(int argc, char **argv){
 	      	}
 	   	} 
 	   		
-	   	close(saidafds[0]), close(saidafds[1]), close(uifds[0]), close(uifds[1]);
+	   	close(uifds[0]), close(uifds[1]);
 	   	kill(*childpid_saida, SIGTERM), kill(*childpid_ui, SIGTERM);
    	}
 
