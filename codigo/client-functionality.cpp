@@ -32,7 +32,7 @@ InviteOpponentAckPackage invite_opponent(int sockfd, int uifd) {
 
 	InviteOpponentAckPackage pa(0);
 	if((n = read(uifd, recvline, MAXLINE)) > 0){
-		if((int)recvline[3] == 1){
+		if((int)recvline[3]%2){
 		    printf("Usuário aceitou o jogo!\n");
 		    pa.string_to_header(recvline);
 		}
@@ -44,8 +44,15 @@ InviteOpponentAckPackage invite_opponent(int sockfd, int uifd) {
 
 int answer_opponent(ustring recvline){
 	if(recvline[0] == '1') {
+		int ret = 1, resp;
+		printf("Deseja começar?(Digite 1 se sim e 0 se não)\n");
+		scanf("%d", &resp);
+		ret |= (resp << 1);
+		printf("Deseja ser o X?(Digite 1 se sim e 0 se não)\n");
+		scanf("%d", &resp);
+		ret |= (resp << 2);
 		// Faz outras perguntas
-		return 1;
+		return ret;
 	}
 	else return 0;
 }
@@ -226,6 +233,7 @@ int send_move(Table * t, bool x, int connfd) {
 	}
 	printf("Você jogou na casa (%d, %d)\n", r, c);
 	(*t).print();
+	fflush(stdout);
 
 	if((*t).winner() == 1){
 		printf("Você ganhou!!\n");

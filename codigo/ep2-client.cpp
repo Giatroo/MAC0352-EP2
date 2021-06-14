@@ -32,7 +32,6 @@ int main(int argc, char **argv){
 
    	fprintf(stdout, "connected\n");
    	
-
    	int uifds[2];
    	if(pipe(uifds)){
    		fprintf(stderr,"Erro ao criar pipe\n");
@@ -59,13 +58,15 @@ int main(int argc, char **argv){
 				InviteOpponentAckPackage p(resp);
 				p.port = atoi(argv[3]);
 				n = p.header_to_string(sndline);
+				printf("%d\n", (int)sndline[3]);
 				if(write(sockfd, sndline, n) < 0){
 		            printf("Erro ao direcionar à saída :(\n");
 		            exit (11);
 		        }
 
-				if(resp > 0){
-					int pont = start_match(true, false, true, atoi(argv[3]), NULL);
+				if((resp & (1 << 0))){
+					int pont = start_match(true, (resp & (1 << 1)),\
+						(resp & (1 << 2)), atoi(argv[3]), NULL);
 					end_match(pont, sockfd);
 				}
 				
@@ -75,8 +76,12 @@ int main(int argc, char **argv){
    				InviteOpponentAckPackage p(0);
    				p = invite_opponent(sockfd, uifds[0]);
 
-   				if(p.resp == 1){
-   					int pont = start_match(false, true, false, p.port, p.ip);
+
+				printf("%d\n", p.resp);
+
+   				if((p.resp & (1 << 0))){
+   					int pont = start_match(false, ((p.resp & (1 << 1)) == 0),\
+   					 	((p.resp & (1 << 2)) == 0), p.port, p.ip);
    					end_match(pont, sockfd);
    				}
    				else{

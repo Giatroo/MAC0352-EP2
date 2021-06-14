@@ -27,8 +27,8 @@ int Table::update(int r, int c, bool p){
 
 	char ox;
 
-	if(p) ox = 'O';
-	else ox = 'X';
+	if(p) ox = 'X';
+	else ox = 'O';
 
 	t[r][c] = ox;
 	pecas++;
