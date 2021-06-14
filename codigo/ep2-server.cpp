@@ -101,39 +101,27 @@ int main(int argc, char **argv) {
                 exit (1);
             }
 
-            pid_t childpid_pai = getpid();
-            pid_t * childpid_saida = (pid_t *)global_malloc(sizeof(pid_t));
-            pid_t * childpid_heartbeat = (pid_t *)global_malloc(sizeof(pid_t));
-            pid_t * childpid_invitation = (pid_t *)global_malloc(sizeof(pid_t));
+            pid_t * pid_pai = (pid_t *)global_malloc(sizeof(pid_t));
+            pid_t * pid_heartbeat = (pid_t *)global_malloc(sizeof(pid_t));
+            pid_t * pid_invitation = (pid_t *)global_malloc(sizeof(pid_t));
             int * heartbeat_resp = (int *)global_malloc(sizeof(int));
+            *pid_pai = getpid();
 
             if ((childpid = fork()) == 0){
-                *childpid_saida = getpid();
-                // Saída
-                while ((n = read(pipefds[0], recvline, MAXLINE)) > 0){
-                	if(write(connfd, recvline, n) < 0){
-                        printf("ERRO AO ENVIAR PACOTE :(\n");
-                        exit (11);
-                    }
-                }
-            }
-            else if ((childpid = fork()) == 0){
-                *childpid_heartbeat = getpid();
+                *pid_heartbeat = getpid();
                 
                 // Heartbeats
                 while(true){
-                    if(pingreq(pipefds[1], heartbeat_resp) == 0){
+                    if(pingreq(connfd, heartbeat_resp) == 0){
                         fprintf(stderr, "Cliente Morreu :(\n");
                         close(connfd);
-                        kill(*childpid_saida, SIGTERM);
-                        kill(*childpid_invitation, SIGTERM);
-                        kill(childpid_pai, SIGTERM);
                         break;
                     }
                 }
+                kill(*pid_invitation, SIGTERM), kill(*pid_pai, SIGTERM);
             }
             else if ((childpid = fork()) == 0){
-                *childpid_invitation = getpid();
+                *pid_invitation = getpid();
                 
                 // Invitation
                 while(true){
@@ -143,14 +131,14 @@ int main(int argc, char **argv) {
                     if(new_update_client_invitation(clients_invitation[ind])){
                     	if(is_invited(clients_invitation[ind])){
                     		int invitor = clients_invitation[ind]/(1 << 5);
-                    		send_invitation_package(invitor, pipefds[1]);
+                    		send_invitation_package(invitor, connfd);
                     		clients_invitation[ind] ^= (1 << 3);
                     	}
                     	else{
                     		int invitor = ind, invited = clients_invitation[ind]/(1 << 5);
                     		int resp = clients_invitation[invitor]%(1 << 3);
                     		send_invitation_ack_package(resp, ip_clients[invited],\
-                    			port_clients[invited], pipefds[1]);
+                    			port_clients[invited], connfd);
 
                     		if(resp == 0) 
 					            clients_invitation[ind] = 0;
@@ -171,7 +159,7 @@ int main(int argc, char **argv) {
                             TODO: Semaforizar?
                         */
                         invite_opponent(recvline, clients_invitation, ind,\
-                        	pipefds[1]);
+                        	connfd);
                     }
                     else if(recvline[0] == INVITE_OPPONENT_ACK_PACKAGE){
                         process_invitation_ack(recvline, clients_invitation,\
@@ -181,14 +169,12 @@ int main(int argc, char **argv) {
                     	printf("Jogador %d com pontuação %d\n", ind, (int)recvline[1]);
                     }
                 }
-                kill(*childpid_saida, SIGTERM);
-                kill(*childpid_heartbeat, SIGTERM);
-                kill(*childpid_invitation, SIGTERM);
+                kill(*pid_heartbeat, SIGTERM), kill(*pid_invitation, SIGTERM);
             }       
-
-            close(pipefds[0]);
-            close(pipefds[1]);
-
+            close(connfd);
+            global_free(pid_pai, sizeof(pid_t)), global_free(pid_heartbeat, sizeof(pid_t));
+            global_free(pid_invitation, sizeof(pid_t));
+            global_free(heartbeat_resp, sizeof(int));
             printf("[Uma conexão fechada (PID = %d)] %ld\n", getpid(), n);
             exit(0);
 

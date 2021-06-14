@@ -112,12 +112,20 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char * ip) {
 	fprintf(stdout, "connected!\n");
 	
 	pid_t childpid;
-    pid_t * childpid_heartbeat = (pid_t *)global_malloc(sizeof(pid_t));
-    pid_t * childpid_ui = (pid_t *)global_malloc(sizeof(pid_t));
-    pid_t * childpid_pai = (pid_t *)global_malloc(sizeof(pid_t));
+    pid_t * pid_latencia = (pid_t *)global_malloc(sizeof(pid_t));
+    pid_t * pid_ui = (pid_t *)global_malloc(sizeof(pid_t));
+    pid_t * pid_pai = (pid_t *)global_malloc(sizeof(pid_t));
+
+    *pid_pai = getpid();
+
     int * trava_shell = (int *)global_malloc(sizeof(int));
 
-    *childpid_pai = getpid();
+    /*
+		TODO SEMAFORIZAR?
+    */
+    double * delay = (double *)global_malloc(3*sizeof(double));
+	int * delay_ind = (int *) global_malloc(sizeof(int));
+	*delay_ind = 0;    
 
 	int delay_fds[2];
    	if(pipe(delay_fds)){
@@ -130,24 +138,28 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char * ip) {
 	(*t).print();
 		
     if((childpid = fork()) == 0){
-        *childpid_heartbeat = getpid();
+        *pid_latencia = getpid();
                 
-        // Heartbeats
+        // Latencia
         while(true){
         	double val;
             if((val = get_ping(delay_fds[0], connfd)) == 0){
                 fprintf(stderr, "Cliente Morreu :(\n");
                 break;
             }
-            sleep(5);
+            else{
+            	delay[*delay_ind] = 1000*val;
+            	*delay_ind = (*delay_ind + 1)%3;
+            }
+            sleep(1);
         }
 
-		quit(childpid_pai, childpid_ui, childpid_heartbeat,\
+		quit(pid_pai, pid_ui, pid_latencia,\
 			trava_shell, t, connfd);
         return 0;
     }
 	else if((childpid = fork()) == 0){
-   		*childpid_ui = getpid();
+   		*pid_ui = getpid();
    		// UI
    		if(moving_first){
     		*trava_shell = 0;
@@ -162,7 +174,7 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char * ip) {
 			if(strcmp((char *)recvline, "send") == 0){
 				int acabou;
 				if((acabou = send_move(t, x, connfd)) > -1){
-					quit(childpid_pai, childpid_heartbeat, childpid_ui,\
+					quit(pid_pai, pid_latencia, pid_ui,\
 					trava_shell, t, connfd);
 					return acabou;
 				}
@@ -173,9 +185,14 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char * ip) {
 			}
 			else if(strcmp((char *)recvline, "end") == 0){
 				surrender(connfd);
-				quit(childpid_pai, childpid_heartbeat, childpid_ui,\
+				quit(pid_pai, pid_latencia, pid_ui,\
 					trava_shell, t, connfd);
 				return 0;
+			}
+			else if(strcmp((char *)recvline, "delay") == 0){
+				int i = *delay_ind;
+				printf("%lf ms\n%lf ms\n%lf ms\n", delay[i], delay[(i + 2)%3],\
+					delay[(i + 1)%3]);
 			}
 			else{
 				printf("Comando inválido!\n");
@@ -183,8 +200,7 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char * ip) {
 
 			fprintf(stdout, "JogoDaVelha> ");
 		}
-		quit(childpid_pai, childpid_heartbeat, childpid_ui,\
-			trava_shell, t, connfd);
+		quit(pid_pai, pid_latencia, pid_ui, trava_shell, t, connfd);
 		return 0;
     }
     else{
@@ -201,16 +217,15 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char * ip) {
 			else if((int)recvline[0] == SEND_MOVE_PACKAGE){
 				int acabou;
 				if((acabou = get_move(t, x, recvline)) != -1){
-					quit(childpid_ui, childpid_heartbeat, childpid_pai,\
-						trava_shell, t, connfd);
+					quit(pid_ui, pid_latencia, pid_pai, trava_shell,\
+						t, connfd);
 					return acabou;
 				}
 				*trava_shell = 0;
 			}
 		}
 
-		quit(childpid_ui, childpid_heartbeat, childpid_pai,\
-			trava_shell, t, connfd);
+		quit(pid_ui, pid_latencia, pid_pai, trava_shell, t, connfd);
 		return 0;
     }
 }

@@ -38,18 +38,19 @@ int main(int argc, char **argv){
    		exit (1);
    	}
 
-   	pid_t childpid_pai = getpid(), childpid;
-    pid_t * childpid_saida = (pid_t *)global_malloc(sizeof(pid_t));
-    pid_t * childpid_ui = (pid_t *)global_malloc(sizeof(pid_t));
+   	pid_t childpid;
+   	pid_t * pid_pai = (pid_t *)global_malloc(sizeof(pid_t));
+    pid_t * pid_ui = (pid_t *)global_malloc(sizeof(pid_t));
     int * wait_invitation_ans = (int *)global_malloc(sizeof(int));
     *wait_invitation_ans = 0;
+    *pid_pai = getpid();
     /*
 		-1 se está esperando resposta do convidado e -2 é o convidado e está esperando
 		o usuário
     */
 
    	if((childpid = fork()) == 0){
-   		*childpid_ui = getpid();
+   		*pid_ui = getpid();
    		// UI
    		while(scanf("%s", recvline)){
    			if(*wait_invitation_ans == 1){
@@ -58,7 +59,6 @@ int main(int argc, char **argv){
 				InviteOpponentAckPackage p(resp);
 				p.port = atoi(argv[3]);
 				n = p.header_to_string(sndline);
-				printf("%d\n", (int)sndline[3]);
 				if(write(sockfd, sndline, n) < 0){
 		            printf("Erro ao direcionar à saída :(\n");
 		            exit (11);
@@ -76,10 +76,7 @@ int main(int argc, char **argv){
    				InviteOpponentAckPackage p(0);
    				p = invite_opponent(sockfd, uifds[0]);
 
-
-				printf("%d\n", p.resp);
-
-   				if((p.resp & (1 << 0))){
+				if((p.resp & (1 << 0))){
    					int pont = start_match(false, ((p.resp & (1 << 1)) == 0),\
    					 	((p.resp & (1 << 2)) == 0), p.port, p.ip);
    					end_match(pont, sockfd);
@@ -89,6 +86,7 @@ int main(int argc, char **argv){
    				}
 		    }
 		}
+		kill(*pid_pai, SIGTERM);
    	}
    	else{
    		// Entrada
@@ -109,10 +107,10 @@ int main(int argc, char **argv){
 		        }
 	      	}
 	   	} 
-	   		
-	   	close(uifds[0]), close(uifds[1]);
-	   	kill(*childpid_saida, SIGTERM), kill(*childpid_ui, SIGTERM);
+	   	kill(*pid_ui, SIGTERM);
    	}
-
-   exit(0);
+   	global_free(pid_pai, sizeof(pid_t)), global_free(pid_ui, sizeof(pid_t));
+   	global_free(wait_invitation_ans, sizeof(int));
+   	close(uifds[0]), close(uifds[1]);
+   	exit(0);
 }
