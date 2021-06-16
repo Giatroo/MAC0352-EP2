@@ -4,8 +4,8 @@
 #include <cstddef>
 #include <string>
 
-#include "util.hpp"
 #include "server-io.hpp"
+#include "util.hpp"
 
 typedef enum {
     CONNECT_PACKAGE,
@@ -159,6 +159,51 @@ class ResClassificationsPackage : public PackageTemplate {
 
     ssize_t header_to_string(ustring line);
     void show_users();
+};
+
+class PingReqPackage : public PackageTemplate {
+  public:
+    PingReqPackage();
+    ssize_t header_to_string(ustring line);
+};
+
+class PingBackPackage : public PackageTemplate {
+  public:
+    PingBackPackage();
+    ssize_t header_to_string(ustring line);
+};
+
+class InviteOpponentPackage : public PackageTemplate {
+  public:
+    int cliente;
+    InviteOpponentPackage(int c);
+    ssize_t header_to_string(ustring line);
+};
+
+class InviteOpponentAckPackage : public PackageTemplate {
+  public:
+    int resp;
+    char *ip;
+    int port;
+    InviteOpponentAckPackage(int r);
+    ssize_t header_to_string(ustring line);
+    void string_to_header(ustring recvline);
+};
+
+class SendMovePackage : public PackageTemplate {
+  public:
+    int r, c;
+    SendMovePackage();
+    SendMovePackage(int r, int c);
+    ssize_t header_to_string(ustring line);
+    void string_to_header(ustring recvline);
+};
+
+class EndMatchPackage : public PackageTemplate {
+  public:
+    int pont;
+    EndMatchPackage(int p);
+    ssize_t header_to_string(ustring line);
 };
 
 #endif /* ifndef PACKAGES_HPP */

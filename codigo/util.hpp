@@ -27,6 +27,8 @@ typedef enum {
    DELAY,
    END,
    LOGOUT,
+   YES,
+   NO,
    EXIT
 } cmd_t;
 

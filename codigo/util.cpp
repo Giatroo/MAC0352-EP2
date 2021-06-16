@@ -17,6 +17,8 @@ int cmd_str_to_int(std::string cmd) {
     if (cmd == "delay") return DELAY;
     if (cmd == "end") return END;
     if (cmd == "logout") return LOGOUT;
+    if (cmd == "yes") return YES;
+    if (cmd == "no") return NO;
     if (cmd == "exit") return EXIT;
     return -1;
 }
