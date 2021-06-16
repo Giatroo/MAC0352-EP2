@@ -20,10 +20,13 @@
 
 using namespace std;
 
-void cmd_switch(ustring recvline, int n) {
+void cmd_switch(ustring recvline, int n, int connfd) {
     byte package_type;
+    ssize_t len;
     string user, password, cur_password, new_password;
+    uchar sendline[MAXLINE + 1];
     package_type = recvline[0];
+    PackageTemplate *return_package = nullptr;
 
     switch (package_type) {
         case CREATE_USER_PACKAGE: {
@@ -33,10 +36,12 @@ void cmd_switch(ustring recvline, int n) {
             user_t *new_user;
             new_user = create_user(create_user_package.username,
                                    create_user_package.password);
+
             if (new_user == nullptr) {
-                cerr << "Nulo" << endl;
+                return_package = new CreateUserAckPackage((byte) 0);
             } else {
                 cout << *new_user << endl;
+                return_package = new CreateUserAckPackage((byte) 1);
             }
             break;
         }
@@ -48,8 +53,10 @@ void cmd_switch(ustring recvline, int n) {
                                             login_package.user_password);
             if (success_login == true) {
                 cout << "Sucesso" << endl;
+                return_package = new LoginAckPackage((byte) 1);
             } else {
                 cout << "Não sucesso" << endl;
+                return_package = new LoginAckPackage((byte) 0);
             }
             break;
         }
@@ -64,8 +71,10 @@ void cmd_switch(ustring recvline, int n) {
 
             if (success_change_pass == true) {
                 cout << "Sucesso" << endl;
+                return_package = new ChangePasswordAckPackage((byte) 1);
             } else {
                 cout << "Não sucesso" << endl;
+                return_package = new ChangePasswordAckPackage((byte) 0);
             }
             break;
         }
@@ -83,9 +92,24 @@ void cmd_switch(ustring recvline, int n) {
 
         case REQUEST_ALL_CONNECTED_USERS_PACKAGE: {
             cout << "Listing" << endl;
+            return_package = new ResConnectedUsersPackage();
+
             show_all_connected_users();
+
             break;
         }
+
+        case REQUEST_CLASSIFICATIONS_PACKAGE: {
+            cout << "Leaders" << endl;
+            return_package = new ResClassificationsPackage();
+            break;
+        }
+    }
+
+    if (return_package != nullptr) {
+        len = return_package->header_to_string(sendline);
+        print_in_hex(sendline, len);
+        write(connfd, sendline, len);
     }
 }
 
@@ -147,7 +171,7 @@ int main(int argc, char **argv) {
                 recvline[n] = 0;
                 fprintf(stdout, "Recebido: ");
                 print_in_hex(recvline, n);
-                cmd_switch(recvline, n);
+                cmd_switch(recvline, n, connfd);
             }
             printf("[Uma conexão fechada]\n");
             exit(0);

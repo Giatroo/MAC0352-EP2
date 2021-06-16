@@ -32,10 +32,6 @@ user_t *create_user(std::string name, std::string password) {
     printf("Creating user. Total = %d\n", total_users[0]);
 
     int i = total_users[0];
-    // for (long unsigned int j = 0; j < name.size(); ++j) {
-    // users[i]->name[j] = name[j];
-    // }
-    // users[i]->name[name.size()] = 0;
     set_str(users[i]->name, name);
     set_str(users[i]->password, password);
     users[i]->score = 0;

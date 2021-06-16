@@ -5,6 +5,7 @@
 #include <string>
 
 #include "util.hpp"
+#include "server-io.hpp"
 
 typedef enum {
     CONNECT_PACKAGE,
@@ -40,16 +41,16 @@ class FixedHeader {
     void write(ustring line, int &pos);
 };
 
-class HeaderTemplate {
+class PackageTemplate {
   public:
-    HeaderTemplate();
+    PackageTemplate();
 
     FixedHeader fixed_header;
 
     virtual ssize_t header_to_string(ustring line) = 0;
 };
 
-class CreateUserPackage : public HeaderTemplate {
+class CreateUserPackage : public PackageTemplate {
   public:
     CreateUserPackage(std::string, std::string);
     CreateUserPackage(ustring recvline);
@@ -60,7 +61,7 @@ class CreateUserPackage : public HeaderTemplate {
     ssize_t header_to_string(ustring line);
 };
 
-class CreateUserAckPackage : public HeaderTemplate {
+class CreateUserAckPackage : public PackageTemplate {
   public:
     byte return_code;
 
@@ -70,7 +71,7 @@ class CreateUserAckPackage : public HeaderTemplate {
     ssize_t header_to_string(ustring line);
 };
 
-class LoginPackage : public HeaderTemplate {
+class LoginPackage : public PackageTemplate {
   public:
     LoginPackage(std::string, std::string);
     LoginPackage(ustring recvline);
@@ -81,7 +82,7 @@ class LoginPackage : public HeaderTemplate {
     ssize_t header_to_string(ustring line);
 };
 
-class LoginAckPackage : public HeaderTemplate {
+class LoginAckPackage : public PackageTemplate {
   public:
     byte return_code;
 
@@ -91,7 +92,7 @@ class LoginAckPackage : public HeaderTemplate {
     ssize_t header_to_string(ustring line);
 };
 
-class LogoutPackage : public HeaderTemplate {
+class LogoutPackage : public PackageTemplate {
   public:
     LogoutPackage();
     LogoutPackage(ustring recvline);
@@ -99,7 +100,7 @@ class LogoutPackage : public HeaderTemplate {
     ssize_t header_to_string(ustring line);
 };
 
-class ChangePasswordPackage : public HeaderTemplate {
+class ChangePasswordPackage : public PackageTemplate {
   public:
     std::string cur_password;
     std::string new_password;
@@ -110,7 +111,7 @@ class ChangePasswordPackage : public HeaderTemplate {
     ssize_t header_to_string(ustring line);
 };
 
-class ChangePasswordAckPackage : public HeaderTemplate {
+class ChangePasswordAckPackage : public PackageTemplate {
   public:
     byte return_code;
 
@@ -120,7 +121,7 @@ class ChangePasswordAckPackage : public HeaderTemplate {
     ssize_t header_to_string(ustring line);
 };
 
-class ReqConnectedUsersPackage : public HeaderTemplate {
+class ReqConnectedUsersPackage : public PackageTemplate {
   public:
     ReqConnectedUsersPackage();
     ReqConnectedUsersPackage(ustring recvline);
@@ -128,13 +129,36 @@ class ReqConnectedUsersPackage : public HeaderTemplate {
     ssize_t header_to_string(ustring line);
 };
 
-// RESPONSE ALL CONNECTED USERS PACKAGE
-class ResConnectedUsersPackage : public HeaderTemplate {
+class ResConnectedUsersPackage : public PackageTemplate {
   public:
     ResConnectedUsersPackage();
     ResConnectedUsersPackage(ustring recvline);
 
+    int num_users;
+    user_t pkg_users[MAX_USERS];
+
     ssize_t header_to_string(ustring line);
+    void show_users();
+};
+
+class ReqClassificationsPackage : public PackageTemplate {
+  public:
+    ReqClassificationsPackage();
+    ReqClassificationsPackage(ustring recvline);
+
+    ssize_t header_to_string(ustring line);
+};
+
+class ResClassificationsPackage : public PackageTemplate {
+  public:
+    ResClassificationsPackage();
+    ResClassificationsPackage(ustring recvline);
+
+    int num_users;
+    user_t pkg_users[MAX_USERS];
+
+    ssize_t header_to_string(ustring line);
+    void show_users();
 };
 
 #endif /* ifndef PACKAGES_HPP */

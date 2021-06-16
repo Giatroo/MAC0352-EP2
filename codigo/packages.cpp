@@ -6,10 +6,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <algorithm>
+#include <iostream>
+
+#include "server-io.hpp"
 #include "util.hpp"
 
 // FIXED HEADER
-
 FixedHeader::FixedHeader() { }
 
 FixedHeader::FixedHeader(ustring recvline) {
@@ -35,8 +38,8 @@ void FixedHeader::write(ustring line, int &pos) {
     free(temp);
 }
 
-// HEADER TEMPLATE
-HeaderTemplate::HeaderTemplate() { }
+// PACKAGE TEMPLATE
+PackageTemplate::PackageTemplate() { }
 
 // CREATE USER PACKAGE
 CreateUserPackage::CreateUserPackage(std::string username,
@@ -229,8 +232,135 @@ ssize_t ReqConnectedUsersPackage::header_to_string(ustring line) {
 
 // RESPONSE ALL CONNECTED USERS PACKAGE
 ResConnectedUsersPackage::ResConnectedUsersPackage() { }
-ResConnectedUsersPackage::ResConnectedUsersPackage(ustring recvline) { }
+ResConnectedUsersPackage::ResConnectedUsersPackage(ustring recvline) {
+    int pos = 3;
+    this->fixed_header = FixedHeader(recvline);
 
-ssize_t ResConnectedUsersPackage::header_to_string(ustring line) { return 0; }
+    this->num_users = recvline[pos++];
+
+    for (int i = 0; i < this->num_users; i++) {
+        int len = byte_str_to_int(recvline, pos);
+        pos += 2;
+        this->pkg_users[i].name = (char *) malloc(len * sizeof(char));
+        for (int j = 0; j < len; j++)
+            this->pkg_users[i].name[j] = (char) recvline[pos++];
+        this->pkg_users[i].name[len] = 0;
+        this->pkg_users[i].score = recvline[pos++];
+        this->pkg_users[i].connected = recvline[pos++];
+        this->pkg_users[i].in_match = recvline[pos++];
+    }
+}
+// ResConnectedUsersPackage::~ResConnectedUsersPackage() { }
+
+ssize_t ResConnectedUsersPackage::header_to_string(ustring line) {
+    int total_len = 1;
+    for (int i = 0; i < *total_users; i++) {
+        total_len += strlen(users[i]->name) + 2 + 3;
+    }
+
+    this->fixed_header.header_type = RESPONSE_ALL_CONNECTED_USERS_PACKAGE;
+    this->fixed_header.remaning_length = total_len;
+
+    int pos = 0;
+    this->fixed_header.write(line, pos);
+    line[pos++] = *total_users;
+
+    for (int i = 0; i < *total_users; i++) {
+        int len = strlen(users[i]->name);
+        ustring strlen = int_to_2byte_str(len);
+        line[pos++] = strlen[0];
+        line[pos++] = strlen[1];
+        free(strlen);
+        for (int j = 0; j < len; ++j) { line[pos++] = users[i]->name[j]; }
+        line[pos++] = users[i]->score;
+        line[pos++] = users[i]->connected;
+        line[pos++] = users[i]->in_match;
+    }
+
+    return pos;
+}
+
+void ResConnectedUsersPackage::show_users() {
+    for (int i = 0; i < this->num_users; i++) {
+        std::cout << "User [" << this->pkg_users[i].name << "]:" << std::endl
+                  << "\tScore: " << this->pkg_users[i].score << std::endl
+                  << "\tConnected: " << this->pkg_users[i].connected
+                  << std::endl
+                  << "\tPlaying: " << this->pkg_users[i].in_match << std::endl
+                  << std::endl;
+    }
+}
+
+// REQUEST CLASSIFICATIONS PACKAGE
+ReqClassificationsPackage::ReqClassificationsPackage() { }
+ReqClassificationsPackage::ReqClassificationsPackage(ustring recvline) {
+    this->fixed_header = FixedHeader(recvline);
+}
+
+ssize_t ReqClassificationsPackage::header_to_string(ustring line) {
+    this->fixed_header.header_type = REQUEST_CLASSIFICATIONS_PACKAGE;
+    this->fixed_header.remaning_length = 0;
+
+    int pos = 0;
+    this->fixed_header.write(line, pos);
+
+    return pos;
+}
+
+// RESPONSE CLASSIFICATIONS PACKAGE
+ResClassificationsPackage::ResClassificationsPackage() { }
+ResClassificationsPackage::ResClassificationsPackage(ustring recvline) {
+    int pos = 3;
+    this->fixed_header = FixedHeader(recvline);
+
+    this->num_users = recvline[pos++];
+
+    for (int i = 0; i < this->num_users; i++) {
+        int len = byte_str_to_int(recvline, pos);
+        pos += 2;
+        this->pkg_users[i].name = (char *) malloc(len * sizeof(char));
+        for (int j = 0; j < len; j++)
+            this->pkg_users[i].name[j] = (char) recvline[pos++];
+        this->pkg_users[i].name[len] = 0;
+        this->pkg_users[i].score = recvline[pos++];
+    }
+}
+
+ssize_t ResClassificationsPackage::header_to_string(ustring line) {
+    int total_len = 1;
+    for (int i = 0; i < *total_users; i++) {
+        total_len += strlen(users[i]->name) + 2 + 1;
+    }
+
+    this->fixed_header.header_type = RESPONSE_CLASSIFICATIONS_PACKAGE;
+    this->fixed_header.remaning_length = total_len;
+
+    int pos = 0;
+    this->fixed_header.write(line, pos);
+    line[pos++] = *total_users;
+
+    for (int i = 0; i < *total_users; i++) {
+        int len = strlen(users[i]->name);
+        ustring strlen = int_to_2byte_str(len);
+        line[pos++] = strlen[0];
+        line[pos++] = strlen[1];
+        free(strlen);
+        for (int j = 0; j < len; ++j) { line[pos++] = users[i]->name[j]; }
+        line[pos++] = users[i]->score;
+    }
+
+    return pos;
+}
+void ResClassificationsPackage::show_users() {
+    auto great = [](user_t a, user_t b) { return a.score > b.score; };
+    std::sort(this->pkg_users, this->pkg_users + this->num_users, great);
+
+    for (int i = 0; i < this->num_users; i++) {
+        std::cout << "User [" << this->pkg_users[i].name << "]:" << std::endl
+                  << "\tScore: " << this->pkg_users[i].score << std::endl
+                  << "\tClassification: " << i + 1 << std::endl
+                  << std::endl;
+    }
+}
 
 #endif /* ifndef PACKAGES_CPP */

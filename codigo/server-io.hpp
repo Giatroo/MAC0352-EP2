@@ -14,8 +14,7 @@ class user_t {
     bool connected;
     bool in_match;
 
-    void set_name(std::string);
-    void set_password(std::string);
+    std::string get_user_str();
 
     friend std::ostream &operator<<(std::ostream &, const user_t &);
 };
