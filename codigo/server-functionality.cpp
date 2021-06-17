@@ -39,6 +39,10 @@ user_t *create_user(std::string name, std::string password) {
         // user already exists
         return nullptr;
     }
+    if (*current_user != -1) {
+        // user is already logged in
+        return nullptr;
+    }
 
     printf("Creating user. Total = %d\n", total_users[0]);
 
@@ -67,6 +71,12 @@ bool user_login(std::string name, std::string password,
 
     if (user->connected) {
         std::cerr << "Já conectado" << std::endl;
+        return false;
+    }
+
+    if (*current_user != -1) {
+        // user is already logged in
+        std::cerr << "Você já está logado" << std::endl;
         return false;
     }
 
@@ -115,6 +125,11 @@ void show_all_connected_users() {
 void show_classifications(int n) { }
 
 void invite_opponent(ustring recvline, user_t *invitor_user, int pipe) {
+    if (*current_user == -1) {
+        std::cerr << "Not logged in" << std::endl;
+        return;
+    }
+
     InviteOpponentPackage inv_pkg(recvline);
 
     if (invitor_user == nullptr) {

@@ -297,6 +297,9 @@ int main(int argc, char **argv) {
                 kill(*pid_heartbeat, SIGTERM), kill(*pid_invitation, SIGTERM);
             }
             close(connfd);
+            users[*current_user]->connected = false;
+            users[*current_user]->in_match = false;
+            serialize_users(false);
             global_free(pid_pai, sizeof(pid_t));
             global_free(pid_heartbeat, sizeof(pid_t));
             global_free(pid_invitation, sizeof(pid_t));
@@ -309,6 +312,7 @@ int main(int argc, char **argv) {
             close(connfd);
     }
 
+    serialize_users(true);
     global_free(pid_clients, MAX_CLIENTS);
 
     exit(0);

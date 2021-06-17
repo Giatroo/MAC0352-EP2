@@ -5,6 +5,7 @@
 #include <string>
 
 #define MAX_STR_LEN 128
+#define USER_PATH "users.db"
 
 class user_t {
   public:
@@ -26,7 +27,7 @@ extern user_t **users;
 #define MAX_USERS 1000
 extern int *total_users;
 
-void serialize_users();
+void serialize_users(bool server_shutdown);
 void deserialize_users();
 
 typedef enum {
