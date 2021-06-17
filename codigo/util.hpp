@@ -12,6 +12,8 @@
 #define MAXDATASIZE 100
 #define MAXLINE 4096
 
+#define debug(x)  std::cout << #x << " = " << x << std::endl
+
 typedef unsigned char uchar;
 typedef unsigned char *ustring;
 typedef u_int8_t byte;

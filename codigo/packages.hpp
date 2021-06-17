@@ -175,8 +175,11 @@ class PingBackPackage : public PackageTemplate {
 
 class InviteOpponentPackage : public PackageTemplate {
   public:
-    int cliente;
-    InviteOpponentPackage(int c);
+    InviteOpponentPackage(std::string c);
+    InviteOpponentPackage(ustring recvline);
+
+    std::string cliente;
+
     ssize_t header_to_string(ustring line);
 };
 

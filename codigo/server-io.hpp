@@ -13,6 +13,9 @@ class user_t {
     int score;
     bool connected;
     bool in_match;
+    char *ip;
+    int port;
+    int client_invitation;
 
     std::string get_user_str();
 

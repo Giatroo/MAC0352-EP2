@@ -369,9 +369,7 @@ ssize_t PingReqPackage::header_to_string(ustring line) {
     line[1] = line[2] = 0;
     return 3;
 }
-PingReqPackage::PingReqPackage() {
-    fixed_header.header_type = PINGREQ_PACKAGE;
-}
+PingReqPackage::PingReqPackage() { fixed_header.header_type = PINGREQ_PACKAGE; }
 
 ssize_t PingBackPackage::header_to_string(ustring line) {
     line[0] = this->fixed_header.header_type;
@@ -383,15 +381,20 @@ PingBackPackage::PingBackPackage() {
 }
 
 ssize_t InviteOpponentPackage::header_to_string(ustring line) {
-    line[0] = this->fixed_header.header_type;
-    line[1] = 0;
-    line[2] = 1;
-    line[3] = (byte) cliente;
-    return 4;
+    int pos = 0;
+    this->fixed_header.write(line, pos);
+    write_string(line, pos, this->cliente);
+    return pos;
 }
-InviteOpponentPackage::InviteOpponentPackage(int c) {
-    cliente = c;
-    fixed_header.header_type = (byte) INVITE_OPPONENT_PACKAGE;
+InviteOpponentPackage::InviteOpponentPackage(std::string c) {
+    this->cliente = c;
+    this->fixed_header.header_type = (byte) INVITE_OPPONENT_PACKAGE;
+    this->fixed_header.remaning_length = this->cliente.size() + 2;
+}
+InviteOpponentPackage::InviteOpponentPackage(ustring recvline) {
+    int pos = 3;
+    this->fixed_header = FixedHeader(recvline);
+    read_string(recvline, pos, this->cliente);
 }
 
 ssize_t InviteOpponentAckPackage::header_to_string(ustring line) {

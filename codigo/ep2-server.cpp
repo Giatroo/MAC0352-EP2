@@ -23,11 +23,9 @@ using namespace std;
 
 int *heartbeat_resp;
 int *pid_clients;
-int *port_clients;
-char **ip_clients;
 int *clients_num;
-int *clients_invitation;
 int ind;
+struct sockaddr_in client_addr;
 
 void cmd_switch(ustring recvline, int n, int connfd) {
     byte package_type;
@@ -58,8 +56,9 @@ void cmd_switch(ustring recvline, int n, int connfd) {
             cout << "Logining in" << endl;
             LoginPackage login_package = LoginPackage(recvline);
 
-            bool success_login = user_login(login_package.user_login,
-                                            login_package.user_password);
+            bool success_login =
+                user_login(login_package.user_login,
+                           login_package.user_password, client_addr);
             if (success_login == true) {
                 cout << "Sucesso" << endl;
                 return_package = new LoginAckPackage((byte) 1);
@@ -119,12 +118,12 @@ void cmd_switch(ustring recvline, int n, int connfd) {
         }
         case INVITE_OPPONENT_PACKAGE: {
             /* TODO: Semaforizar?  */
-            invite_opponent(recvline, clients_invitation, ind, connfd);
+            std::cout << "Convidando" << std::endl;
+            invite_opponent(recvline, users[*current_user], connfd);
             break;
         }
         case INVITE_OPPONENT_ACK_PACKAGE: {
-            process_invitation_ack(recvline, clients_invitation, port_clients,
-                                   ind);
+            process_invitation_ack(recvline, users[*current_user]);
             break;
         }
         case END_MATCH_PACKAGE: {
@@ -146,7 +145,6 @@ int main(int argc, char **argv) {
     pid_t childpid;
     unsigned char recvline[MAXLINE + 1], sndline[MAXLINE + 1];
     ssize_t n;
-    current_user = nullptr;
 
     if (argc < 2) {
         fprintf(stderr, "usage: %s <Port>\n", argv[0]);
@@ -179,10 +177,7 @@ int main(int argc, char **argv) {
     */
     const int MAX_CLIENTS = 10;
     pid_clients = (int *) global_malloc(MAX_CLIENTS * sizeof(int));
-    port_clients = (int *) global_malloc(MAX_CLIENTS * sizeof(int));
-    ip_clients = (char **) global_malloc(MAX_CLIENTS * sizeof(char *));
     clients_num = (int *) global_malloc(sizeof(int));
-    clients_invitation = (int *) global_malloc(100 * sizeof(int));
     /*
         FIM - HARADA - VARIÁVEIS
     */
@@ -192,7 +187,6 @@ int main(int argc, char **argv) {
     printf("[Para finalizar, pressione CTRL+c ou rode um kill ou killall]\n");
 
     while (1) {
-        struct sockaddr_in client_addr;
         socklen_t clen;
 
         if ((connfd = accept(listenfd, (struct sockaddr *) &client_addr,
@@ -208,6 +202,9 @@ int main(int argc, char **argv) {
             printf("IP address is: %s\n", inet_ntoa(client_addr.sin_addr));
             printf("port is: %d\n", (int) ntohs(client_addr.sin_port));
 
+            current_user = (int *) global_malloc(sizeof(int));
+            *current_user = -1;
+
             fprintf(stdout, "Usuários:\n");
             for (int i = 0; i < total_users[0]; i++) {
                 cout << *users[i] << endl;
@@ -218,9 +215,6 @@ int main(int argc, char **argv) {
             */
             ind = *clients_num;
             pid_clients[ind] = getpid();
-            ip_clients[ind] = inet_ntoa(client_addr.sin_addr);
-            port_clients[ind] = (int) ntohs(client_addr.sin_port);
-            clients_invitation[ind] = 0;
             *clients_num += 1;
 
             int pipefds[2];
@@ -255,23 +249,39 @@ int main(int argc, char **argv) {
                     /*
                         TODO: Semaforizar?
                     */
-                    if (new_update_client_invitation(clients_invitation[ind])) {
-                        if (is_invited(clients_invitation[ind])) {
-                            int invitor = clients_invitation[ind] / (1 << 5);
-                            send_invitation_package(invitor, connfd);
-                            clients_invitation[ind] ^= (1 << 3);
+                    if (*current_user == -1) {
+                        sleep(1);
+                        continue;
+                    }
+
+                    if (new_update_client_invitation(
+                            users[*current_user]->client_invitation)) {
+                        if (is_invited(
+                                users[*current_user]->client_invitation)) {
+                            int invitor_id =
+                                users[*current_user]->client_invitation /
+                                (1 << 5);
+                            user_t *invitor_user = find_user(invitor_id);
+                            send_invitation_package(invitor_user->name, connfd);
+                            users[*current_user]->client_invitation ^= (1 << 3);
                         } else {
-                            int invitor = ind,
-                                invited = clients_invitation[ind] / (1 << 5);
-                            int resp = clients_invitation[invitor] % (1 << 3);
-                            send_invitation_ack_package(
-                                resp, ip_clients[invited],
-                                port_clients[invited], connfd);
+                            int invited =
+                                users[*current_user]->client_invitation /
+                                (1 << 5);
+                            int resp = users[*current_user]->client_invitation %
+                                       (1 << 3);
+
+                            user_t *invited_user = find_user(invited);
+
+                            send_invitation_ack_package(resp, invited_user->ip,
+                                                        invited_user->port,
+                                                        connfd);
 
                             if (resp == 0)
-                                clients_invitation[ind] = 0;
+                                users[*current_user]->client_invitation = 0;
                             else
-                                clients_invitation[ind] ^= (1 << 3);
+                                users[*current_user]->client_invitation ^=
+                                    (1 << 3);
                         }
                     }
                     sleep(1);
@@ -287,8 +297,8 @@ int main(int argc, char **argv) {
                 kill(*pid_heartbeat, SIGTERM), kill(*pid_invitation, SIGTERM);
             }
             close(connfd);
-            global_free(pid_pai, sizeof(pid_t)),
-                global_free(pid_heartbeat, sizeof(pid_t));
+            global_free(pid_pai, sizeof(pid_t));
+            global_free(pid_heartbeat, sizeof(pid_t));
             global_free(pid_invitation, sizeof(pid_t));
             global_free(heartbeat_resp, sizeof(int));
             printf("[Uma conexão fechada (PID = %d)] %ld\n", getpid(), n);
@@ -300,7 +310,6 @@ int main(int argc, char **argv) {
     }
 
     global_free(pid_clients, MAX_CLIENTS);
-    global_free(port_clients, MAX_CLIENTS);
 
     exit(0);
 }

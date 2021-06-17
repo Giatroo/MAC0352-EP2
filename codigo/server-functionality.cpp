@@ -3,6 +3,8 @@
 
 #include "server-functionality.hpp"
 
+#include <arpa/inet.h>
+
 #include <cstring>
 #include <iostream>
 #include <string>
@@ -10,7 +12,7 @@
 #include "server-io.hpp"
 #include "util.hpp"
 
-user_t *current_user;
+int *current_user;
 
 user_t *find_user(std::string name) {
     user_t *ret_user = nullptr;
@@ -21,6 +23,15 @@ user_t *find_user(std::string name) {
         }
     }
     return ret_user;
+}
+
+user_t *find_user(int i) { return users[i]; }
+
+int find_user_index(std::string name) {
+    int i;
+    for (i = *total_users - 1; i >= 0; i--)
+        if (!strcmp(users[i]->name, name.c_str())) break;
+    return i;
 }
 
 user_t *create_user(std::string name, std::string password) {
@@ -41,7 +52,8 @@ user_t *create_user(std::string name, std::string password) {
     return users[i];
 }
 
-bool user_login(std::string name, std::string password) {
+bool user_login(std::string name, std::string password,
+                struct sockaddr_in client_addr) {
     user_t *user = find_user(name);
     if (user == nullptr) {
         std::cerr << "Usuário não existe" << std::endl;
@@ -59,34 +71,37 @@ bool user_login(std::string name, std::string password) {
     }
 
     user->connected = true;
-    current_user = user;
+    user->ip = inet_ntoa(client_addr.sin_addr);
+    user->port = (int) ntohs(client_addr.sin_port);
+    user->client_invitation = 0;
+    *current_user = find_user_index(user->name);
     std::cout << "Logado com sucesso" << std::endl;
     return true;
 }
 
 bool change_password(std::string cur_password, std::string new_password) {
-    if (current_user == nullptr) {
+    if (*current_user == -1) {
         std::cerr << "Not logged in" << std::endl;
         return false;
     }
 
-    if (strcmp(current_user->password, cur_password.c_str())) {
+    if (strcmp(users[*current_user]->password, cur_password.c_str())) {
         std::cerr << "Senha incorreta" << std::endl;
         return false;
     }
 
-    set_str(current_user->password, new_password);
+    set_str(users[*current_user]->password, new_password);
     return true;
 }
 
 bool user_logout() {
-    if (current_user == nullptr) {
+    if (*current_user == -1) {
         std::cerr << "Not logged in" << std::endl;
         return false;
     }
 
-    current_user->connected = false;
-    current_user = nullptr;
+    users[*current_user]->connected = false;
+    *current_user = -1;
     std::cout << "Deslogado com sucesso" << std::endl;
     return true;
 }
@@ -99,13 +114,48 @@ void show_all_connected_users() {
 
 void show_classifications(int n) { }
 
-void invite_opponent(ustring recvline, int *ci, int invitor, int pipe) {
-    int invited = (int) recvline[3];
-    if (ci[invited] == 0) {
-        ci[invitor] = (1 << 5) * invited;
-        ci[invited] = (1 << 5) * invitor + (1 << 4) + (1 << 3);
+void invite_opponent(ustring recvline, user_t *invitor_user, int pipe) {
+    InviteOpponentPackage inv_pkg(recvline);
+
+    if (invitor_user == nullptr) {
+        std::cerr << "Deve estar logado para convidar" << std::endl;
+        unsigned char sndline[MAXLINE + 1];
+        InviteOpponentAckPackage p(0);
+        ssize_t n = p.header_to_string(sndline);
+        if (write(pipe, sndline, n) < 0) {
+            printf("Reject :(\n");
+            exit(11);
+        }
+        return;
+    }
+
+    user_t *invited_user = find_user(inv_pkg.cliente);
+
+    if (invited_user == nullptr) {
+        // O jogador convidado não existe
+        std::cerr << "O jogador convidado não existe" << std::endl;
+        unsigned char sndline[MAXLINE + 1];
+        InviteOpponentAckPackage p(0);
+        ssize_t n = p.header_to_string(sndline);
+        if (write(pipe, sndline, n) < 0) {
+            printf("Reject :(\n");
+            exit(11);
+        }
+        return;
+    }
+
+    int invited_id = find_user_index(invited_user->name);
+    int invitor_id = find_user_index(invitor_user->name);
+
+    if (invited_user->client_invitation == 0 && invited_user->connected) {
+        invitor_user->client_invitation = (1 << 5) * invited_id;
+        invited_user->client_invitation =
+            (1 << 5) * invitor_id + (1 << 4) + (1 << 3);
+        debug(invited_user->name);
+        debug(invited_user->client_invitation);
     } else {
         // Jogador está ocupado e o servidor recusa
+        std::cerr << "O jogador está ocupado" << std::endl;
         unsigned char sndline[MAXLINE + 1];
         InviteOpponentAckPackage p(0);
         ssize_t n = p.header_to_string(sndline);
@@ -116,19 +166,19 @@ void invite_opponent(ustring recvline, int *ci, int invitor, int pipe) {
     }
 }
 
-void process_invitation_ack(ustring recvline, int *clients_invitation,
-                            int *port, int invited) {
-    int invitor = clients_invitation[invited] / 32;
+void process_invitation_ack(ustring recvline, user_t *invited_user) {
+    int invitor_id = invited_user->client_invitation / (1 << 5);
+    user_t *invitor_user = find_user(invitor_id);
     InviteOpponentAckPackage p(0);
     p.string_to_header(recvline);
 
     if (p.resp == 0)
-        clients_invitation[invited] = 0;
+        invited_user->client_invitation = 0;
     else
-        port[invited] = p.port;
+        invited_user->port = p.port;
 
-    clients_invitation[invitor] += p.resp;
-    clients_invitation[invitor] |= (1 << 3);
+    invitor_user->client_invitation += p.resp;
+    invitor_user->client_invitation |= (1 << 3);
     // Comunica o processo do invitor de que teve resposta
 }
 
@@ -154,9 +204,9 @@ bool new_update_client_invitation(int client_invitation) {
     return (((1 << 3) & client_invitation) != 0);
 }
 
-void send_invitation_package(int invitor, int pipe) {
+void send_invitation_package(std::string invitor_name, int pipe) {
     unsigned char sndline[MAXLINE + 1];
-    InviteOpponentPackage p(invitor);
+    InviteOpponentPackage p(invitor_name);
     ssize_t n = p.header_to_string(sndline);
     if (write(pipe, sndline, n) < 0) {
         printf("Reject :(\n");
