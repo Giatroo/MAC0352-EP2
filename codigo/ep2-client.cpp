@@ -23,6 +23,7 @@ void cmd_switch(int sockfd, int uifds0, int invite_port) {
     ssize_t len;
     uchar sendline[MAXLINE + 1], recvline[MAXLINE + 1];
 
+    cout << getpid() << endl;
     cout << "Digite um comando:" << endl;
     cin >> cmd;
 
@@ -173,20 +174,28 @@ int main(int argc, char **argv) {
     pid_t childpid;
     pid_t *pid_pai = (pid_t *) global_malloc(sizeof(pid_t));
     pid_t *pid_ui = (pid_t *) global_malloc(sizeof(pid_t));
+    pid_jogo_latencia = (pid_t *) global_malloc(sizeof(pid_t));
+    pid_jogo_ui = (pid_t *) global_malloc(sizeof(pid_t));
+    pid_jogo_pai = (pid_t *) global_malloc(sizeof(pid_t));
     *pid_pai = getpid();
 
     if ((childpid = fork()) == 0) {
         *pid_ui = getpid();
+
+        cout << "UI cliente: " << getpid() << endl;
         // UI
         while (1) { cmd_switch(sockfd, uifds[0], atoi(argv[3])); }
 
+        std::cout << "Alguma coisa deu ruim" << std::endl;
         kill(*pid_pai, SIGTERM);
     } else {
+        cout << "Entrada cliente: " << getpid() << endl;
         // Entrada
         while ((n = read(sockfd, recvline, MAXLINE)) > 0) {
             recvline[n] = 0;
-            fprintf(stdout, "Recebido: ");
-            print_in_hex(recvline, n);
+            
+            // fprintf(stdout, "Recebido: ");
+            // print_in_hex(recvline, n);
 
             if (recvline[0] == PINGREQ_PACKAGE)
                 pingback(sockfd);
@@ -235,12 +244,18 @@ int main(int argc, char **argv) {
                 res_classifications_package.show_users();
             }
         }
-        kill(*pid_ui, SIGTERM);
+        kill(*pid_jogo_pai, SIGTERM);
+        kill(*pid_jogo_ui, SIGTERM);
+        kill(*pid_jogo_latencia, SIGTERM);
     }
 
     global_free(pid_pai, sizeof(pid_t)), global_free(pid_ui, sizeof(pid_t));
-    close(uifds[0]), close(uifds[1]);
+    global_free(pid_jogo_pai, sizeof(pid_t));
+    global_free(pid_jogo_ui, sizeof(pid_t));
+    global_free(pid_jogo_latencia, sizeof(pid_t));
 
+    close(uifds[0]), close(uifds[1]);
+    std::cout<< "Matou todo mundo" << std::endl;
     exit(0);
 }
 

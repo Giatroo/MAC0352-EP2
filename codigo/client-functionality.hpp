@@ -24,6 +24,11 @@ extern bool user_playing;
 // true se o client está logado.
 extern bool logged_in;
 
+// pids de processos no client_functionality
+extern pid_t *pid_jogo_latencia;
+extern pid_t *pid_jogo_ui;
+extern pid_t *pid_jogo_pai;
+
 // Contém o nome do jogador com quem se está jogando contra caso se esteja
 // jogando contra alguém ou nullptr caso contrário.
 extern std::string opponent;
@@ -80,8 +85,8 @@ void end_match(int score1, int pipe);
 // Ao receber um pingreq, essa função é chamada para enviar um pingback.
 void pingback(int pipe);
 
-// Retorna o ping entre o usuário e o jogador com quem ele está jogando.
-double get_ping(int pipe_to_read, int connfd);
+// Envia um ping para o outro cliente.
+void get_ping(int connfd);
 
 // Encerra as operações do cliente (pode ser chamada apenas depois de logout).
 void quit(pid_t * p1, pid_t * p2, pid_t * p3, int * trava, Table * t, int connfd);

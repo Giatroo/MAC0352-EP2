@@ -1,7 +1,7 @@
 #ifndef TTT_ENGINE_HPP
 #define TTT_ENGINE_HPP
 
-#include <stdio.h>
+#include <iostream>
 
 class Table{
 private:
