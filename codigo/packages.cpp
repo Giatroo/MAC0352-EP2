@@ -464,4 +464,26 @@ EndMatchPackage::EndMatchPackage(int p) {
     fixed_header.header_type = (byte) END_MATCH_PACKAGE;
 }
 
+ReconnectPackage::ReconnectPackage(std::string username) {
+    this->username = username;
+}
+
+ReconnectPackage::ReconnectPackage(ustring recvline) {
+    int pos = 3;
+    this->fixed_header = FixedHeader(recvline);
+    read_string(recvline, pos, this->username);
+}
+
+
+ssize_t ReconnectPackage::header_to_string(ustring line) {
+    this->fixed_header.header_type = RECONNECT_PACKAGE;
+    this->fixed_header.remaning_length = 2 + this->username.size();
+
+    int pos = 0;
+    this->fixed_header.write(line, pos);
+    write_string(line, pos, this->username);
+
+    return pos;
+}
+
 #endif /* ifndef PACKAGES_CPP */

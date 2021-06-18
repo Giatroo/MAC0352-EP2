@@ -25,31 +25,28 @@ void show_all_connected_users() { }
 
 void show_classifications(int n) { }
 
-int get_free_port(){
+int get_free_port() {
     struct sockaddr_in sin;
     int sockefds, port = 8000;
 
     sockefds = socket(AF_INET, SOCK_STREAM, 0);
-    if(sockefds == -1)
-      return -1;
+    if (sockefds == -1) return -1;
 
     sin.sin_addr.s_addr = 0;
     sin.sin_addr.s_addr = INADDR_ANY;
     sin.sin_family = AF_INET;
 
-    while(true){
-        port = rand()%60000 + 5535;
+    while (true) {
+        port = rand() % 60000 + 5535;
         sin.sin_port = htons(port);
-        if (bind(sockefds, (struct sockaddr *)&sin, sizeof(struct sockaddr_in)) == -1) {
-          if (errno == EADDRINUSE) 
-            printf("Port in use");
-        }
-        else{
+        if (bind(sockefds, (struct sockaddr *) &sin,
+                 sizeof(struct sockaddr_in)) == -1) {
+            if (errno == EADDRINUSE) printf("Port in use");
+        } else {
             close(sockefds);
             return port;
         }
     }
-    
 }
 
 InviteOpponentAckPackage invite_opponent(int sockfd, int uifd) {
@@ -59,20 +56,20 @@ InviteOpponentAckPackage invite_opponent(int sockfd, int uifd) {
     InviteOpponentPackage p(client_name);
     int n = p.header_to_string(sndline);
 
-	print_in_hex(sndline, n);
+    print_in_hex(sndline, n);
     if (write(sockfd, sndline, n) < 0) {
-        std::cout << "Erro ao direcionar à saída :(" << std::endl;    
+        std::cout << "Erro ao direcionar à saída :(" << std::endl;
         exit(11);
     }
 
     InviteOpponentAckPackage pa(0);
     if ((n = read(uifd, recvline, MAXLINE)) > 0) {
-    	recvline[n] = 0;
+        recvline[n] = 0;
         if ((int) recvline[3] % 2) {
-        	std::cout << "Usuário aceitou o jogo!" << std::endl;
+            std::cout << "Usuário aceitou o jogo!" << std::endl;
             pa.string_to_header(recvline);
-        } else{
-        	std::cout << "Usuário recusou o jogo!" << std::endl;
+        } else {
+            std::cout << "Usuário recusou o jogo!" << std::endl;
         }
     }
     return pa;
@@ -84,12 +81,10 @@ int answer_opponent(std::string recvline) {
         std::string resp;
         std::cout << "Deseja comecar?" << std::endl;
         std::cin >> resp;
-        if(resp == "yes") 
-        	ret |= (1 << 1);
+        if (resp == "yes") ret |= (1 << 1);
         std::cout << "Deseja ser o X?" << std::endl;
         std::cin >> resp;
-        if(resp == "yes") 
-        	ret |= (1 << 2);
+        if (resp == "yes") ret |= (1 << 2);
         return ret;
     } else
         return 0;
@@ -136,19 +131,20 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
         servaddr.sin_family = AF_INET;
         servaddr.sin_port = htons(port);
 
-        if ((connfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+        if ((connfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
             fprintf(stderr, "socket error :( \n");
-            exit (5);
+            exit(5);
         }
 
-        if (inet_pton(AF_INET, ip, &servaddr.sin_addr) <= 0){
+        if (inet_pton(AF_INET, ip, &servaddr.sin_addr) <= 0) {
             fprintf(stderr, "inet_pton error for %s :(\n", ip);
-            exit (5);
+            exit(5);
         }
 
-        if (connect(connfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0){
+        if (connect(connfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) <
+            0) {
             fprintf(stderr, "connect error :(\n");
-            exit (5);
+            exit(5);
         }
     }
 
@@ -164,7 +160,8 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
     double *delay = (double *) global_malloc(3 * sizeof(double));
     int *delay_ind = (int *) global_malloc(sizeof(int));
     *delay_ind = 0;
-    struct timespec * start = (struct timespec *) global_malloc(sizeof(struct timespec));
+    struct timespec *start =
+        (struct timespec *) global_malloc(sizeof(struct timespec));
 
     int delay_fds[2];
     if (pipe(delay_fds)) {
@@ -212,7 +209,7 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
                     continue;
                 }
             } else if (comando == "end") {
-            	surrender(connfd);
+                surrender(connfd);
                 quit(trava_shell, t, connfd);
                 return 0;
             } else if (comando == "delay") {
@@ -221,29 +218,29 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
                 std::cout << delay[(i + 1) % 3] << "ms" << std::endl;
                 std::cout << delay[i] << "ms" << std::endl;
             } else {
-            	std::cout << "Comando inválido" << std::endl;
+                std::cout << "Comando inválido" << std::endl;
             }
             std::cout << "JogoDaVelha> " << std::flush;
         }
         quit(trava_shell, t, connfd);
         return 0;
     } else {
-    	*pid_jogo_pai = getpid();
+        // *pid_jogo_pai = getpid();
         // Entrada
         while ((n = read(connfd, recvline, MAXLINE)) > 0) {
-        	recvline[n] = 0;
+            recvline[n] = 0;
             // fprintf(stdout, "Recebido: ");
             // print_in_hex(recvline, n);
-            
-        	if ((int) recvline[0] == PINGREQ_PACKAGE)
+
+            if ((int) recvline[0] == PINGREQ_PACKAGE)
                 pingback(connfd);
-            else if ((int) recvline[0] == PINGBACK_PACKAGE) {        	        
+            else if ((int) recvline[0] == PINGBACK_PACKAGE) {
                 struct timespec finish;
                 clock_gettime(CLOCK_MONOTONIC, &finish);
                 double elapsed = (finish.tv_sec - (*start).tv_sec);
-        		elapsed += (finish.tv_nsec - (*start).tv_nsec) / 1000000000.0;
+                elapsed += (finish.tv_nsec - (*start).tv_nsec) / 1000000000.0;
 
-        		delay[*delay_ind] = 1000 * elapsed;
+                delay[*delay_ind] = 1000 * elapsed;
                 *delay_ind = (*delay_ind + 1) % 3;
             } else if ((int) recvline[0] == SEND_MOVE_PACKAGE) {
                 int acabou;
@@ -273,14 +270,14 @@ int send_move(Table *t, bool x, int connfd) {
     ssize_t n = p.header_to_string(sndline);
 
     if (write(connfd, sndline, n) < 0) {
-    	std::cout << "Erro ao enviar pacote" << std::endl;
+        std::cout << "Erro ao enviar pacote" << std::endl;
         exit(11);
     }
     std::cout << "Você jogou na casa (" << r << ", " << c << ")" << std::endl;
     (*t).print();
 
     if ((*t).winner() == 1) {
-    	std::cout << "Você ganhou!!" << std::endl;
+        std::cout << "Você ganhou!!" << std::endl;
         return 2;
     } else if ((*t).winner() == 2) {
         std::cout << "Empatou!!" << std::endl;
@@ -297,22 +294,23 @@ int get_move(Table *t, bool x, ustring recvline) {
     debug(p.c);
 
     if (p.r == 0) {
-    	std::cout << "O outro jogador desistiu. Você ganhou!!" << std::endl;
+        std::cout << "O outro jogador desistiu. Você ganhou!!" << std::endl;
         return 2;
     }
-    std::cout << "Outro jogador jogou na casa (" << p.r << ", " << p.c << ")" << std::endl;
-    
+    std::cout << "Outro jogador jogou na casa (" << p.r << ", " << p.c << ")"
+              << std::endl;
+
     if ((*t).update(p.r, p.c, !x) == 0) {
-    	std::cout << "Erro no jogo da velha!" << std::endl;
+        std::cout << "Erro no jogo da velha!" << std::endl;
         exit(12);
     }
     (*t).print();
 
     if ((*t).winner() == 1) {
-    	std::cout << "Outro jogador ganhou!!" << std::endl;
+        std::cout << "Outro jogador ganhou!!" << std::endl;
         return 0;
     } else if ((*t).winner() == 2) {
-    	std::cout << "Empatou!!" << std::endl;
+        std::cout << "Empatou!!" << std::endl;
         return 2;
     }
 

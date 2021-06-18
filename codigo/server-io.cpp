@@ -77,24 +77,6 @@ void deserialize_users() {
     user_file.close();
 }
 
-string get_log_time_str(tm *time) {
-    string time_str = "";
-    time_str += '[';
-    time_str += time->tm_year + 1900;
-    time_str += '-';
-    time_str += time->tm_mon + 1;
-    time_str += '-';
-    time_str += time->tm_mday;
-    time_str += ' ';
-    time_str += time->tm_hour;
-    time_str += ':';
-    time_str += time->tm_min;
-    time_str += ':';
-    time_str += time->tm_sec;
-    time_str += ']';
-    return time_str;
-}
-
 void write_log_line(log_t log_entry, log_struct_t log_struct) {
     ofstream log_file;
 
@@ -109,6 +91,13 @@ void write_log_line(log_t log_entry, log_struct_t log_struct) {
 
     switch (log_entry) {
         case SERVER_STARTED: log_file << "server started."; break;
+        case SUCCESS_USER_CREATED:
+            log_file << "success user created. ip = " << log_struct.client_ip
+                     << " name = " << log_struct.username;
+            break;
+        case UNSUCCESS_USER_CREATED:
+            log_file << "unsuccess user created. ip = " << log_struct.client_ip;
+            break;
         case CLIENT_CONNECTED:
             log_file << "client connected. ip = " << log_struct.client_ip;
             break;
@@ -118,6 +107,19 @@ void write_log_line(log_t log_entry, log_struct_t log_struct) {
             break;
         case UNSUCCESS_LOGIN:
             log_file << "user unsuccess login. ip = " << log_struct.client_ip
+                     << " name = " << log_struct.username;
+            break;
+        case SUCCESS_LOGOUT:
+            log_file << "user logout. ip = " << log_struct.client_ip
+                     << " name = " << log_struct.username;
+            break;
+        case SUCCESS_CHANGE_PASS:
+            log_file << "success change password. ip = " << log_struct.client_ip
+                     << " name = " << log_struct.username;
+            break;
+        case UNSUCCESS_CHANGE_PASS:
+            log_file << "unsuccess change password. ip = "
+                     << log_struct.client_ip
                      << " name = " << log_struct.username;
             break;
         case CLIENT_DISCONNECT:
@@ -131,7 +133,7 @@ void write_log_line(log_t log_entry, log_struct_t log_struct) {
             break;
         case MATCH_FINISHED:
             log_file << "match finished";
-            log_file << "match finished. ip_winner = " << log_struct.winner_ip
+            log_file << " ip_winner = " << log_struct.winner_ip
                      << " winner_name = " << log_struct.winner_name
                      << " ip_loser = " << log_struct.loser_ip
                      << " name_loser = " << log_struct.loser_name;
@@ -143,6 +145,14 @@ void write_log_line(log_t log_entry, log_struct_t log_struct) {
     }
     log_file << std::endl;
     log_file.close();
+
+    if (log_entry == SERVER_STARTED) {
+        // inicializa os usuários lendo eles do banco de dados
+        deserialize_users();
+    } else {
+        // salva os usuários no banco de dados
+        serialize_users(log_entry == SERVER_FINISHED);
+    }
 }
 
 #endif /* ifndef SERVER_IO_CPP */

@@ -193,8 +193,15 @@ void process_invitation_ack(ustring recvline, user_t *invited_user) {
 
     if (p.resp == 0)
         invited_user->client_invitation = 0;
-    else
+    else {
+        log_struct_t log_struct;
+        log_struct.player1_ip = invited_user->ip;
+        log_struct.player1_name = invited_user->name;
+        log_struct.player2_ip = invitor_user->ip;
+        log_struct.player2_name = invitor_user->name;
+        write_log_line(MATCH_STARTED, log_struct);
         invited_user->port = p.port;
+    }
 
     invitor_user->client_invitation += p.resp;
     invitor_user->client_invitation |= (1 << 3);

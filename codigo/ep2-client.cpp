@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
@@ -6,7 +7,6 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <unistd.h>
-#include <pthread.h>
 
 #include <cstring>
 #include <iostream>
@@ -21,6 +21,7 @@ using namespace std;
 int sockfd;
 int uifds[2];
 struct sockaddr_in servaddr;
+string cur_username;
 
 void cmd_switch() {
     string cmd;
@@ -38,7 +39,7 @@ void cmd_switch() {
             len = create_user_package.header_to_string(sendline);
             print_in_hex(sendline, len);
             write(sockfd, sendline, len);
-            
+
             break;
         }
         case LOGIN: {
@@ -49,10 +50,11 @@ void cmd_switch() {
             print_in_hex(sendline, len);
             write(sockfd, sendline, len);
 
+            cur_username = username;
+
             break;
         }
         case LOGOUT: {
-            cout << "Deslogando" << endl;
             LogoutPackage logout_package = LogoutPackage();
 
             len = logout_package.header_to_string(sendline);
@@ -89,7 +91,6 @@ void cmd_switch() {
             len = req_classifications_package.header_to_string(sendline);
             print_in_hex(sendline, len);
             write(sockfd, sendline, len);
-
 
             break;
         }
@@ -136,26 +137,31 @@ void cmd_switch() {
         case EXIT: {
             cout << "Exiting" << endl;
             /* TODO: Preciso dar free em algo? <12-06-21, Paiolla> */
+            close(sockfd);
+            close(uifds[0]), close(uifds[1]);
+            global_free(pid_jogo_ui, sizeof(pid_t));
+            global_free(pid_jogo_latencia, sizeof(pid_t));
+            std::cout << "Matou todo mundo" << std::endl;
             exit(0);
         }
     }
 }
 
-void * ui(void * arg){
+void *ui(void *arg) {
     while (1) { cmd_switch(); }
     std::cout << "Alguma coisa deu ruim" << std::endl;
     return NULL;
 }
 
-void * entrada(void * arg){
+void *entrada(void *arg) {
     uchar sendline[MAXLINE + 1], recvline[MAXLINE + 1];
     ssize_t n;
 
-    while(true){
+    while (true) {
         cout << "Servidor voltou!" << endl;
         while ((n = read(sockfd, recvline, MAXLINE)) > 0) {
             recvline[n] = 0;
-            
+
             fprintf(stdout, "Recebido: ");
             print_in_hex(recvline, n);
 
@@ -163,7 +169,8 @@ void * entrada(void * arg){
                 pingback(sockfd);
             else if (recvline[0] == INVITE_OPPONENT_PACKAGE) {
                 InviteOpponentPackage p(recvline);
-                cout << "Usuário " << p.cliente << " está te convidando para jogar um jogo!" << endl;
+                cout << "Usuário " << p.cliente
+                     << " está te convidando para jogar um jogo!" << endl;
                 cout << "Aceita o convite?(Digite yes ou no)" << endl;
             } else if (recvline[0] == INVITE_OPPONENT_ACK_PACKAGE) {
                 if (write(uifds[1], recvline, n) < 0) {
@@ -186,6 +193,7 @@ void * entrada(void * arg){
                     cout << "Logado com sucesso." << endl;
                 } else {
                     cout << "Falha ao logar." << endl;
+                    cur_username = "";
                 }
             } else if (recvline[0] == CHANGE_PASSWORD_ACK_PACKAGE) {
                 ChangePasswordAckPackage change_password_ack_package =
@@ -207,7 +215,8 @@ void * entrada(void * arg){
             }
         }
         int new_socket;
-        cout << "Servidor caiu!" << " " << getpid() << endl;
+        cout << "Servidor caiu!"
+             << " " << getpid() << endl;
         sleep(1);
         if ((new_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
             fprintf(stderr, "socket error :( \n");
@@ -216,18 +225,23 @@ void * entrada(void * arg){
         close(sockfd);
 
         bool voltou = false;
-        for(int i = 0; i < 180; i++){
-            if (connect(new_socket, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+        for (int i = 0; i < 180; i++) {
+            if (connect(new_socket, (struct sockaddr *) &servaddr,
+                        sizeof(servaddr)) < 0) {
                 sleep(1);
-            }
-            else {
+            } else {
                 debug(new_socket);
                 sockfd = new_socket;
                 voltou = true;
+
+                ReconnectPackage reconnect_pkg(cur_username);
+                n = reconnect_pkg.header_to_string(sendline);
+                write(sockfd, sendline, n);
+
                 break;
             }
         }
-        if(!voltou){
+        if (!voltou) {
             cout << "Servidor caiu!" << endl;
             break;
         }
@@ -241,6 +255,7 @@ void * entrada(void * arg){
 int main(int argc, char **argv) {
     ssize_t n;
     uchar sendline[MAXLINE + 1], recvline[MAXLINE + 1];
+    cur_username = "";
 
     if (argc != 3) {
         fprintf(stderr, "usage: %s <IPaddress> <Port>\n", argv[0]);
@@ -261,7 +276,7 @@ int main(int argc, char **argv) {
         exit(3);
     }
 
-    if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+    if (connect(sockfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0) {
         fprintf(stderr, "connect error :(\n");
         exit(4);
     }
@@ -275,30 +290,30 @@ int main(int argc, char **argv) {
 
     pid_jogo_latencia = (pid_t *) global_malloc(sizeof(pid_t));
     pid_jogo_ui = (pid_t *) global_malloc(sizeof(pid_t));
-    
+
     pthread_t ui_thread, entrada_thread;
-    if(pthread_create(&ui_thread, NULL, ui, NULL)){
+    if (pthread_create(&ui_thread, NULL, ui, NULL)) {
         printf("Erro ao criar thread UI\n");
-        exit (1);
+        exit(1);
     }
-    if(pthread_create(&entrada_thread, NULL, entrada, NULL)){
+    if (pthread_create(&entrada_thread, NULL, entrada, NULL)) {
         printf("Erro ao criar thread UI\n");
-        exit (1);
+        exit(1);
     }
 
-    if(pthread_join(ui_thread, NULL)){
+    if (pthread_join(ui_thread, NULL)) {
         printf("Erro ao dar join na thread ui\n");
-        exit (1);
+        exit(1);
     }
-    if(pthread_join(entrada_thread, NULL)){
+    if (pthread_join(entrada_thread, NULL)) {
         printf("Erro ao dar join na thread entrada\n");
-        exit (1);
+        exit(1);
     }
 
     close(sockfd);
     close(uifds[0]), close(uifds[1]);
     global_free(pid_jogo_ui, sizeof(pid_t));
     global_free(pid_jogo_latencia, sizeof(pid_t));
-    std::cout<< "Matou todo mundo" << std::endl;
+    std::cout << "Matou todo mundo" << std::endl;
     exit(0);
 }

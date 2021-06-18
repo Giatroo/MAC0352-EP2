@@ -9,6 +9,7 @@
 
 typedef enum {
     CONNECT_PACKAGE,
+    RECONNECT_PACKAGE,
     LOGIN_PACKAGE,
     LOGIN_ACK_PACKAGE,
     LOGOUT_PACKAGE,
@@ -206,6 +207,16 @@ class EndMatchPackage : public PackageTemplate {
   public:
     int pont;
     EndMatchPackage(int p);
+    ssize_t header_to_string(ustring line);
+};
+
+class ReconnectPackage : public PackageTemplate {
+  public:
+    ReconnectPackage(std::string username);
+    ReconnectPackage(ustring recvline);
+
+    std::string username;
+
     ssize_t header_to_string(ustring line);
 };
 

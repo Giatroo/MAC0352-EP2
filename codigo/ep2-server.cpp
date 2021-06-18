@@ -26,6 +26,7 @@ int *pid_clients;
 int *clients_num;
 int ind;
 struct sockaddr_in client_addr;
+pid_t father_pid;
 
 void cmd_switch(ustring recvline, int n, int connfd) {
     byte package_type;
@@ -36,17 +37,32 @@ void cmd_switch(ustring recvline, int n, int connfd) {
     PackageTemplate *return_package = nullptr;
 
     switch (package_type) {
+        case RECONNECT_PACKAGE: {
+            cout << "User reconnecting" << endl;
+            ReconnectPackage reconnect_pkg(recvline);
+            if (reconnect_pkg.username != "") {
+                *current_user = find_user_index(reconnect_pkg.username);
+                debug(*current_user);
+            }
+            break;
+        }
         case CREATE_USER_PACKAGE: {
             cout << "Creating user" << endl;
             CreateUserPackage create_user_package = CreateUserPackage(recvline);
+            log_struct_t log_struct;
 
             user_t *new_user;
             new_user = create_user(create_user_package.username,
                                    create_user_package.password);
 
+            log_struct.client_ip = inet_ntoa(client_addr.sin_addr);
+            log_struct.username = create_user_package.username;
+
             if (new_user == nullptr) {
+                write_log_line(UNSUCCESS_USER_CREATED, log_struct);
                 return_package = new CreateUserAckPackage((byte) 0);
             } else {
+                write_log_line(SUCCESS_USER_CREATED, log_struct);
                 cout << *new_user << endl;
                 return_package = new CreateUserAckPackage((byte) 1);
             }
@@ -79,25 +95,39 @@ void cmd_switch(ustring recvline, int n, int connfd) {
             cout << "Password change" << endl;
             ChangePasswordPackage change_password_package =
                 ChangePasswordPackage(recvline);
+            log_struct_t log_struct;
 
             bool success_change_pass =
                 change_password(change_password_package.cur_password,
                                 change_password_package.new_password);
 
+            log_struct.client_ip = inet_ntoa(client_addr.sin_addr);
+            log_struct.username = users[*current_user]->name;
+
             if (success_change_pass == true) {
                 cout << "Sucesso" << endl;
+                write_log_line(SUCCESS_CHANGE_PASS, log_struct);
                 return_package = new ChangePasswordAckPackage((byte) 1);
             } else {
                 cout << "Não sucesso" << endl;
+                write_log_line(UNSUCCESS_CHANGE_PASS, log_struct);
                 return_package = new ChangePasswordAckPackage((byte) 0);
             }
             break;
         }
         case LOGOUT_PACKAGE: {
             cout << "Logout" << endl;
+            log_struct_t log_struct;
+
+            if (*current_user == -1) { break; }
+
+            log_struct.client_ip = inet_ntoa(client_addr.sin_addr);
+            log_struct.username = users[*current_user]->name;
+
             bool success_logout = user_logout();
 
             if (success_logout == true) {
+                write_log_line(SUCCESS_LOGOUT, log_struct);
                 cout << "Sucesso" << endl;
             } else {
                 cout << "Não sucesso" << endl;
@@ -138,10 +168,34 @@ void cmd_switch(ustring recvline, int n, int connfd) {
             printf("Jogador %d com pontuação %d\n", ind, (int) recvline[1]);
             fflush(stdout);
 
-            users[*current_user]->score += (int)recvline[1];
+            if (is_invited(users[*current_user]->client_invitation)) {
+                log_struct_t log_struct;
+                int opponent_index =
+                    users[*current_user]->client_invitation / (1 << 5);
+                user_t *opponent = find_user(opponent_index);
+
+                if (recvline[1] == 2) { // eu ganhei
+                    log_struct.winner_ip = users[*current_user]->ip;
+                    log_struct.winner_name = users[*current_user]->name;
+                    log_struct.loser_ip = opponent->ip;
+                    log_struct.loser_name = opponent->name;
+                } else if (recvline[1] == 1) { // empate
+
+                } else if (recvline[1] == 0) { // eu perdi
+                    log_struct.loser_ip = users[*current_user]->ip;
+                    log_struct.loser_name = users[*current_user]->name;
+                    log_struct.winner_ip = opponent->ip;
+                    log_struct.winner_name = opponent->name;
+
+                }
+
+                write_log_line(MATCH_FINISHED, log_struct);
+            }
+
+            users[*current_user]->score += (int) recvline[1];
             users[*current_user]->client_invitation = 0;
             users[*current_user]->in_match = false;
-            
+
             break;
         }
     }
@@ -153,12 +207,24 @@ void cmd_switch(ustring recvline, int n, int connfd) {
     }
 }
 
+void exitHandler(int sig) {
+    if (getpid() == father_pid) {
+        std::cerr << "Exiting" << std::endl;
+        log_struct_t log_struct;
+        write_log_line(SERVER_FINISHED, log_struct);
+    }
+    exit(0);
+}
+
 int main(int argc, char **argv) {
     int listenfd, connfd;
     struct sockaddr_in servaddr;
     pid_t childpid;
     unsigned char recvline[MAXLINE + 1], sndline[MAXLINE + 1];
     ssize_t n;
+
+    signal(SIGINT, exitHandler);
+    father_pid = getpid();
 
     if (argc < 2) {
         fprintf(stderr, "usage: %s <Port>\n", argv[0]);
@@ -184,8 +250,6 @@ int main(int argc, char **argv) {
         exit(4);
     }
 
-    // inicializa os usuários lendo eles do banco de dados
-    deserialize_users();
     /*
         HARADA - VARIÁVEIS
     */
@@ -320,7 +384,6 @@ int main(int argc, char **argv) {
             close(connfd);
             users[*current_user]->connected = false;
             users[*current_user]->in_match = false;
-            serialize_users(false);
             global_free(pid_pai, sizeof(pid_t));
             global_free(pid_heartbeat, sizeof(pid_t));
             global_free(pid_invitation, sizeof(pid_t));
@@ -337,7 +400,6 @@ int main(int argc, char **argv) {
             close(connfd);
     }
 
-    serialize_users(true);
     global_free(pid_clients, MAX_CLIENTS);
 
     exit(0);
