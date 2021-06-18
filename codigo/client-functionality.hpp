@@ -53,6 +53,9 @@ void show_all_connected_users();
 // Mostra os n primeiros classificados ou todos se -1.
 void show_classifications(int n);
 
+// Retorna uma porta que está livre
+int get_free_port();
+
 // Convida user para jogar. Se ele não estiver online, não existir ou estiver em
 // partida, retorna false automaticamente. Caso contrário, o servidor irá
 // automaticamente lançar os dois jogadores em um lobby para decidir quem será o
@@ -89,6 +92,6 @@ void pingback(int pipe);
 void get_ping(int connfd);
 
 // Encerra as operações do cliente (pode ser chamada apenas depois de logout).
-void quit(pid_t * p1, pid_t * p2, pid_t * p3, int * trava, Table * t, int connfd);
+void quit(int *trava, Table *t, int connfd);
 
 #endif /* ifndef CLIENT_FUNCTIONALITY_HPP */

@@ -25,6 +25,33 @@ void show_all_connected_users() { }
 
 void show_classifications(int n) { }
 
+int get_free_port(){
+    struct sockaddr_in sin;
+    int sockefds, port = 8000;
+
+    sockefds = socket(AF_INET, SOCK_STREAM, 0);
+    if(sockefds == -1)
+      return -1;
+
+    sin.sin_addr.s_addr = 0;
+    sin.sin_addr.s_addr = INADDR_ANY;
+    sin.sin_family = AF_INET;
+
+    while(true){
+        port = rand()%60000 + 5535;
+        sin.sin_port = htons(port);
+        if (bind(sockefds, (struct sockaddr *)&sin, sizeof(struct sockaddr_in)) == -1) {
+          if (errno == EADDRINUSE) 
+            printf("Port in use");
+        }
+        else{
+            close(sockefds);
+            return port;
+        }
+    }
+    
+}
+
 InviteOpponentAckPackage invite_opponent(int sockfd, int uifd) {
     std::string client_name;
     unsigned char sndline[MAXLINE + 1], recvline[MAXLINE + 1];
@@ -159,7 +186,7 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
             sleep(3);
         }
 
-        quit(pid_jogo_pai, pid_jogo_ui, pid_jogo_latencia, trava_shell, t, connfd);
+        quit(trava_shell, t, connfd);
         return 0;
     } else if ((childpid = fork()) == 0) {
         *pid_jogo_ui = getpid();
@@ -178,7 +205,7 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
             if (comando == "send") {
                 int acabou;
                 if ((acabou = send_move(t, x, connfd)) > -1) {
-                    quit(pid_jogo_pai, pid_jogo_latencia, pid_jogo_ui, trava_shell, t, connfd);
+                    quit(trava_shell, t, connfd);
                     return acabou;
                 } else if (acabou == -1) {
                     *trava_shell = 1;
@@ -186,7 +213,7 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
                 }
             } else if (comando == "end") {
             	surrender(connfd);
-                quit(pid_jogo_pai, pid_jogo_latencia, pid_jogo_ui, trava_shell, t, connfd);
+                quit(trava_shell, t, connfd);
                 return 0;
             } else if (comando == "delay") {
                 int i = *delay_ind;
@@ -198,7 +225,7 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
             }
             std::cout << "JogoDaVelha> " << std::flush;
         }
-        quit(pid_jogo_pai, pid_jogo_latencia, pid_jogo_ui, trava_shell, t, connfd);
+        quit(trava_shell, t, connfd);
         return 0;
     } else {
     	*pid_jogo_pai = getpid();
@@ -221,14 +248,14 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
             } else if ((int) recvline[0] == SEND_MOVE_PACKAGE) {
                 int acabou;
                 if ((acabou = get_move(t, x, recvline)) != -1) {
-                    quit(pid_jogo_ui, pid_jogo_latencia, pid_jogo_pai, trava_shell, t, connfd);
+                    quit(trava_shell, t, connfd);
                     return acabou;
                 }
                 *trava_shell = 0;
             }
         }
 
-        quit(pid_jogo_ui, pid_jogo_latencia, pid_jogo_pai, trava_shell, t, connfd);
+        quit(trava_shell, t, connfd);
         return 0;
     }
 }
@@ -340,11 +367,8 @@ void get_ping(int connfd) {
     }
 }
 
-void quit(pid_t *p1, pid_t *p2, pid_t *p3, int *trava, Table *t, int connfd) {
-    kill(*p1, SIGTERM);
-    kill(*p2, SIGTERM);
-    global_free(p1, sizeof(pid_t)), global_free(p2, sizeof(pid_t));
-    global_free(p3, sizeof(pid_t)), global_free(trava, sizeof(int));
+void quit(int *trava, Table *t, int connfd) {
+    global_free(trava, sizeof(int));
     global_free(t, sizeof(Table));
     close(connfd);
 }
