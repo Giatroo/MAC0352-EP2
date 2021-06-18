@@ -6,6 +6,7 @@
 
 #define MAX_STR_LEN 128
 #define USER_PATH "users.db"
+#define LOG_PATH "ttt.log"
 
 class user_t {
   public:
@@ -35,13 +36,27 @@ typedef enum {
     CLIENT_CONNECTED,
     SUCCESS_LOGIN,
     UNSUCCESS_LOGIN,
-    SUCCESS_LOGOUT,
+    CLIENT_DISCONNECT,
     MATCH_STARTED,
     MATCH_FINISHED,
     UNEXPECTED_DISCONNECT,
     SERVER_FINISHED,
 } log_t;
 
-void write_log_line(log_t);
+class log_struct_t {
+  public:
+    char *client_ip;
+    std::string username;
+    std::string player1_name;
+    char *player1_ip;
+    std::string player2_name;
+    char *player2_ip;
+    std::string winner_name;
+    char *winner_ip;
+    std::string loser_name;
+    char *loser_ip;
+};
+
+void write_log_line(log_t, log_struct_t);
 
 #endif /* ifndef SERVER_IO_HPP */

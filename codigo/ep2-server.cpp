@@ -55,15 +55,22 @@ void cmd_switch(ustring recvline, int n, int connfd) {
         case LOGIN_PACKAGE: {
             cout << "Logining in" << endl;
             LoginPackage login_package = LoginPackage(recvline);
+            log_struct_t log_struct;
 
             bool success_login =
                 user_login(login_package.user_login,
                            login_package.user_password, client_addr);
+
+            log_struct.username = login_package.user_login;
+            log_struct.client_ip = inet_ntoa(client_addr.sin_addr);
+
             if (success_login == true) {
                 cout << "Sucesso" << endl;
+                write_log_line(SUCCESS_LOGIN, log_struct);
                 return_package = new LoginAckPackage((byte) 1);
             } else {
                 cout << "Não sucesso" << endl;
+                write_log_line(UNSUCCESS_LOGIN, log_struct);
                 return_package = new LoginAckPackage((byte) 0);
             }
             break;
@@ -127,6 +134,7 @@ void cmd_switch(ustring recvline, int n, int connfd) {
             break;
         }
         case END_MATCH_PACKAGE: {
+            // write_log_line(MATCH_FINISHED);
             printf("Jogador %d com pontuação %d\n", ind, (int) recvline[1]);
             break;
         }
@@ -186,6 +194,9 @@ int main(int argc, char **argv) {
     printf("[Servidor no ar. Aguardando conexões na porta %s]\n", argv[1]);
     printf("[Para finalizar, pressione CTRL+c ou rode um kill ou killall]\n");
 
+    log_struct_t log_struct;
+    write_log_line(SERVER_STARTED, log_struct);
+
     while (1) {
         socklen_t clen;
 
@@ -201,6 +212,10 @@ int main(int argc, char **argv) {
             close(listenfd);
             printf("IP address is: %s\n", inet_ntoa(client_addr.sin_addr));
             printf("port is: %d\n", (int) ntohs(client_addr.sin_port));
+
+            log_struct_t log_struct;
+            log_struct.client_ip = inet_ntoa(client_addr.sin_addr);
+            write_log_line(CLIENT_CONNECTED, log_struct);
 
             current_user = (int *) global_malloc(sizeof(int));
             *current_user = -1;
@@ -305,6 +320,10 @@ int main(int argc, char **argv) {
             global_free(pid_invitation, sizeof(pid_t));
             global_free(heartbeat_resp, sizeof(int));
             printf("[Uma conexão fechada (PID = %d)] %ld\n", getpid(), n);
+
+            log_struct.client_ip = inet_ntoa(client_addr.sin_addr);
+            write_log_line(CLIENT_DISCONNECT, log_struct);
+
             exit(0);
 
         } else

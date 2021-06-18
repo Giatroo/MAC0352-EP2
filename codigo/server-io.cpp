@@ -3,6 +3,7 @@
 
 #include "server-io.hpp"
 
+#include <ctime>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -73,8 +74,75 @@ void deserialize_users() {
         i++;
     }
     *total_users = i;
+    user_file.close();
 }
 
-void write_log_line(log_t) { }
+string get_log_time_str(tm *time) {
+    string time_str = "";
+    time_str += '[';
+    time_str += time->tm_year + 1900;
+    time_str += '-';
+    time_str += time->tm_mon + 1;
+    time_str += '-';
+    time_str += time->tm_mday;
+    time_str += ' ';
+    time_str += time->tm_hour;
+    time_str += ':';
+    time_str += time->tm_min;
+    time_str += ':';
+    time_str += time->tm_sec;
+    time_str += ']';
+    return time_str;
+}
+
+void write_log_line(log_t log_entry, log_struct_t log_struct) {
+    ofstream log_file;
+
+    log_file.open(LOG_PATH, std::fstream::out | std::fstream::app);
+
+    time_t t = time(0);
+    tm *now = localtime(&t);
+
+    char time_format[25];
+    strftime(time_format, 25, "%c", now);
+    log_file << "[" << time_format << "]: ";
+
+    switch (log_entry) {
+        case SERVER_STARTED: log_file << "server started."; break;
+        case CLIENT_CONNECTED:
+            log_file << "client connected. ip = " << log_struct.client_ip;
+            break;
+        case SUCCESS_LOGIN:
+            log_file << "user success login. ip = " << log_struct.client_ip
+                     << " name = " << log_struct.username;
+            break;
+        case UNSUCCESS_LOGIN:
+            log_file << "user unsuccess login. ip = " << log_struct.client_ip
+                     << " name = " << log_struct.username;
+            break;
+        case CLIENT_DISCONNECT:
+            log_file << "client disconnected. ip = " << log_struct.client_ip;
+            break;
+        case MATCH_STARTED:
+            log_file << "match started. ip1 = " << log_struct.player1_ip
+                     << " name1 = " << log_struct.player1_name
+                     << " ip2 = " << log_struct.player2_ip
+                     << " name2 = " << log_struct.player2_name;
+            break;
+        case MATCH_FINISHED:
+            log_file << "match finished";
+            log_file << "match finished. ip_winner = " << log_struct.winner_ip
+                     << " winner_name = " << log_struct.winner_name
+                     << " ip_loser = " << log_struct.loser_ip
+                     << " name_loser = " << log_struct.loser_name;
+            break;
+        case UNEXPECTED_DISCONNECT:
+            log_file << "unexpected disconnect. ip = " << log_struct.client_ip;
+            break;
+        case SERVER_FINISHED: log_file << "server finished"; break;
+    }
+    log_file << std::endl;
+    log_file.close();
+}
 
 #endif /* ifndef SERVER_IO_CPP */
