@@ -1,7 +1,7 @@
 DIRNAME = ep2-lucas_lucas
 CLIENTOBJS = ep2-client.o util.o client-functionality.o client-cript.o packages.o server-io.o ttt-engine.o
 SERVEROBJS = ep2-server.o util.o server-functionality.o server-io.o server-cript.o packages.o
-CPPFLAGS = -Wall -g -pedantic -Wno-unused-result
+CPPFLAGS = -Wall -g -pedantic -Wno-unused-result -pthread
 COMPILER = g++
 
 default : ep2-client ep2-server

@@ -7,6 +7,9 @@
 #include <string>
 
 std::string opponent;
+pid_t *pid_jogo_latencia;
+pid_t *pid_jogo_ui;
+pid_t *pid_jogo_pai;
 
 void create_user(std::string name, std::string password) { }
 
@@ -22,6 +25,33 @@ void show_all_connected_users() { }
 
 void show_classifications(int n) { }
 
+int get_free_port(){
+    struct sockaddr_in sin;
+    int sockefds, port = 8000;
+
+    sockefds = socket(AF_INET, SOCK_STREAM, 0);
+    if(sockefds == -1)
+      return -1;
+
+    sin.sin_addr.s_addr = 0;
+    sin.sin_addr.s_addr = INADDR_ANY;
+    sin.sin_family = AF_INET;
+
+    while(true){
+        port = rand()%60000 + 5535;
+        sin.sin_port = htons(port);
+        if (bind(sockefds, (struct sockaddr *)&sin, sizeof(struct sockaddr_in)) == -1) {
+          if (errno == EADDRINUSE) 
+            printf("Port in use");
+        }
+        else{
+            close(sockefds);
+            return port;
+        }
+    }
+    
+}
+
 InviteOpponentAckPackage invite_opponent(int sockfd, int uifd) {
     std::string client_name;
     unsigned char sndline[MAXLINE + 1], recvline[MAXLINE + 1];
@@ -31,31 +61,35 @@ InviteOpponentAckPackage invite_opponent(int sockfd, int uifd) {
 
 	print_in_hex(sndline, n);
     if (write(sockfd, sndline, n) < 0) {
-        printf("Erro ao direcionar à saída :(\n");
+        std::cout << "Erro ao direcionar à saída :(" << std::endl;    
         exit(11);
     }
 
     InviteOpponentAckPackage pa(0);
     if ((n = read(uifd, recvline, MAXLINE)) > 0) {
+    	recvline[n] = 0;
         if ((int) recvline[3] % 2) {
-            printf("Usuário aceitou o jogo!\n");
+        	std::cout << "Usuário aceitou o jogo!" << std::endl;
             pa.string_to_header(recvline);
-        } else
-            printf("Usuário recusou o jogo!\n");
+        } else{
+        	std::cout << "Usuário recusou o jogo!" << std::endl;
+        }
     }
     return pa;
 }
 
 int answer_opponent(std::string recvline) {
     if (recvline == "yes") {
-        int ret = 1, resp;
-        printf("Deseja começar?(Digite 1 se sim e 0 se não)\n");
-        scanf("%d", &resp);
-        ret |= (resp << 1);
-        printf("Deseja ser o X?(Digite 1 se sim e 0 se não)\n");
-        scanf("%d", &resp);
-        ret |= (resp << 2);
-        // Faz outras perguntas
+        int ret = 1;
+        std::string resp;
+        std::cout << "Deseja comecar?" << std::endl;
+        std::cin >> resp;
+        if(resp == "yes") 
+        	ret |= (1 << 1);
+        std::cout << "Deseja ser o X?" << std::endl;
+        std::cin >> resp;
+        if(resp == "yes") 
+        	ret |= (1 << 2);
         return ret;
     } else
         return 0;
@@ -67,7 +101,7 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
     struct sockaddr_in servaddr, client_addr;
     socklen_t clen;
 
-    fprintf(stdout, "Game started!\n");
+    std::cout << "O jogo comecou!!" << std::endl;
     if (tipo) {
         int listenfd;
         if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
@@ -82,7 +116,6 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
 
         if (bind(listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) ==
             -1) {
-            printf("%d\n", port);
             perror("bind :(\n");
             exit(3);
         }
@@ -103,26 +136,25 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
         servaddr.sin_family = AF_INET;
         servaddr.sin_port = htons(port);
 
-        if ((connfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+        if ((connfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
             fprintf(stderr, "socket error :( \n");
+            exit (5);
+        }
 
-        if (inet_pton(AF_INET, ip, &servaddr.sin_addr) <= 0)
+        if (inet_pton(AF_INET, ip, &servaddr.sin_addr) <= 0){
             fprintf(stderr, "inet_pton error for %s :(\n", ip);
+            exit (5);
+        }
 
-        if (connect(connfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) <
-            0)
+        if (connect(connfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0){
             fprintf(stderr, "connect error :(\n");
+            exit (5);
+        }
     }
 
-    fprintf(stdout, "JogoDaVelha> ");
-    fprintf(stdout, "connected!\n");
+    std::cout << "JogoDaVelha> connected" << std::endl;
 
     pid_t childpid;
-    pid_t *pid_latencia = (pid_t *) global_malloc(sizeof(pid_t));
-    pid_t *pid_ui = (pid_t *) global_malloc(sizeof(pid_t));
-    pid_t *pid_pai = (pid_t *) global_malloc(sizeof(pid_t));
-
-    *pid_pai = getpid();
 
     int *trava_shell = (int *) global_malloc(sizeof(int));
 
@@ -132,6 +164,7 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
     double *delay = (double *) global_malloc(3 * sizeof(double));
     int *delay_ind = (int *) global_malloc(sizeof(int));
     *delay_ind = 0;
+    struct timespec * start = (struct timespec *) global_malloc(sizeof(struct timespec));
 
     int delay_fds[2];
     if (pipe(delay_fds)) {
@@ -144,110 +177,113 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
     (*t).print();
 
     if ((childpid = fork()) == 0) {
-        *pid_latencia = getpid();
+        *pid_jogo_latencia = getpid();
 
         // Latencia
         while (true) {
-            double val;
-            if ((val = get_ping(delay_fds[0], connfd)) == 0) {
-                fprintf(stderr, "Cliente Morreu :(\n");
-                break;
-            } else {
-                delay[*delay_ind] = 1000 * val;
-                *delay_ind = (*delay_ind + 1) % 3;
-            }
-            sleep(1);
+            clock_gettime(CLOCK_MONOTONIC, start);
+            get_ping(connfd);
+            sleep(3);
         }
 
-        quit(pid_pai, pid_ui, pid_latencia, trava_shell, t, connfd);
+        quit(trava_shell, t, connfd);
         return 0;
     } else if ((childpid = fork()) == 0) {
-        *pid_ui = getpid();
+        *pid_jogo_ui = getpid();
+
         // UI
         if (moving_first) {
             *trava_shell = 0;
-            printf("JogoDaVelha> ");
+            std::cout << "JogoDaVelha> " << std::flush;
         } else {
             *trava_shell = 1;
         }
 
-        while (scanf("%s", recvline)) {
+        std::string comando;
+        while (std::cin >> comando) {
             if (*trava_shell) continue;
-            if (strcmp((char *) recvline, "send") == 0) {
+            if (comando == "send") {
                 int acabou;
                 if ((acabou = send_move(t, x, connfd)) > -1) {
-                    quit(pid_pai, pid_latencia, pid_ui, trava_shell, t, connfd);
+                    quit(trava_shell, t, connfd);
                     return acabou;
                 } else if (acabou == -1) {
                     *trava_shell = 1;
                     continue;
                 }
-            } else if (strcmp((char *) recvline, "end") == 0) {
-                surrender(connfd);
-                quit(pid_pai, pid_latencia, pid_ui, trava_shell, t, connfd);
+            } else if (comando == "end") {
+            	surrender(connfd);
+                quit(trava_shell, t, connfd);
                 return 0;
-            } else if (strcmp((char *) recvline, "delay") == 0) {
+            } else if (comando == "delay") {
                 int i = *delay_ind;
-                printf("%lf ms\n%lf ms\n%lf ms\n", delay[i], delay[(i + 2) % 3],
-                       delay[(i + 1) % 3]);
+                std::cout << delay[(i + 2) % 3] << "ms" << std::endl;
+                std::cout << delay[(i + 1) % 3] << "ms" << std::endl;
+                std::cout << delay[i] << "ms" << std::endl;
             } else {
-                printf("Comando inválido!\n");
+            	std::cout << "Comando inválido" << std::endl;
             }
-
-            fprintf(stdout, "JogoDaVelha> ");
+            std::cout << "JogoDaVelha> " << std::flush;
         }
-        quit(pid_pai, pid_latencia, pid_ui, trava_shell, t, connfd);
+        quit(trava_shell, t, connfd);
         return 0;
     } else {
+    	*pid_jogo_pai = getpid();
         // Entrada
         while ((n = read(connfd, recvline, MAXLINE)) > 0) {
-            if ((int) recvline[0] == PINGREQ_PACKAGE)
+        	recvline[n] = 0;
+            // fprintf(stdout, "Recebido: ");
+            // print_in_hex(recvline, n);
+            
+        	if ((int) recvline[0] == PINGREQ_PACKAGE)
                 pingback(connfd);
-            else if ((int) recvline[0] == PINGBACK_PACKAGE) {
-                if (write(delay_fds[1], recvline, n) < 0) {
-                    printf("Deu ruim em write delay_fds :(\n");
-                    exit(11);
-                }
+            else if ((int) recvline[0] == PINGBACK_PACKAGE) {        	        
+                struct timespec finish;
+                clock_gettime(CLOCK_MONOTONIC, &finish);
+                double elapsed = (finish.tv_sec - (*start).tv_sec);
+        		elapsed += (finish.tv_nsec - (*start).tv_nsec) / 1000000000.0;
+
+        		delay[*delay_ind] = 1000 * elapsed;
+                *delay_ind = (*delay_ind + 1) % 3;
             } else if ((int) recvline[0] == SEND_MOVE_PACKAGE) {
                 int acabou;
                 if ((acabou = get_move(t, x, recvline)) != -1) {
-                    quit(pid_ui, pid_latencia, pid_pai, trava_shell, t, connfd);
+                    quit(trava_shell, t, connfd);
                     return acabou;
                 }
                 *trava_shell = 0;
             }
         }
 
-        quit(pid_ui, pid_latencia, pid_pai, trava_shell, t, connfd);
+        quit(trava_shell, t, connfd);
         return 0;
     }
 }
 
 int send_move(Table *t, bool x, int connfd) {
     int r, c;
-    scanf("%d %d", &r, &c);
+    std::cin >> r >> c;
     if ((*t).update(r, c, x) == 0) {
-        fprintf(stdout, "Posição ocupada! Faça um outro movimento\n");
+        std::cout << "Posição ocupada! Faça um outro movimento" << std::endl;
         return -2;
     }
 
     SendMovePackage p(r, c);
     unsigned char sndline[MAXLINE + 1];
-    int n = p.header_to_string(sndline);
+    ssize_t n = p.header_to_string(sndline);
 
     if (write(connfd, sndline, n) < 0) {
-        printf("Erro ao enviar pacote :(\n");
+    	std::cout << "Erro ao enviar pacote" << std::endl;
         exit(11);
     }
-    printf("Você jogou na casa (%d, %d)\n", r, c);
+    std::cout << "Você jogou na casa (" << r << ", " << c << ")" << std::endl;
     (*t).print();
-    fflush(stdout);
 
     if ((*t).winner() == 1) {
-        printf("Você ganhou!!\n");
+    	std::cout << "Você ganhou!!" << std::endl;
         return 2;
     } else if ((*t).winner() == 2) {
-        printf("Empatou!!\n");
+        std::cout << "Empatou!!" << std::endl;
         return 1;
     }
     return -1;
@@ -257,34 +293,43 @@ int get_move(Table *t, bool x, ustring recvline) {
     SendMovePackage p;
     p.string_to_header(recvline);
 
+    debug(p.r);
+    debug(p.c);
+
     if (p.r == 0) {
-        printf("O outro jogador desistiu. Você ganhou!!\n");
+    	std::cout << "O outro jogador desistiu. Você ganhou!!" << std::endl;
         return 2;
     }
-
-    printf("Outro jogador jogou na casa (%d, %d).\n", p.r, p.c);
+    std::cout << "Outro jogador jogou na casa (" << p.r << ", " << p.c << ")" << std::endl;
+    
     if ((*t).update(p.r, p.c, !x) == 0) {
-        printf("Erro no jogo da velha!\n");
+    	std::cout << "Erro no jogo da velha!" << std::endl;
         exit(12);
     }
     (*t).print();
 
     if ((*t).winner() == 1) {
-        printf("Outro jogador ganhou!!\n");
+    	std::cout << "Outro jogador ganhou!!" << std::endl;
         return 0;
     } else if ((*t).winner() == 2) {
-        printf("Empatou!!\n");
+    	std::cout << "Empatou!!" << std::endl;
         return 2;
     }
 
-    fprintf(stdout, "JogoDaVelha> ");
-    fflush(stdout);
+    std::cout << "JogoDaVelha> " << std::flush;
     return -1;
 }
 
 void surrender(int connfd) {
-    send_move(0, 0, connfd);
-    printf("Você desistiu!!\n");
+    SendMovePackage p(0, 0);
+    unsigned char sndline[MAXLINE + 1];
+    ssize_t n = p.header_to_string(sndline);
+
+    if (write(connfd, sndline, n) < 0) {
+        std::cout << "Erro ao enviar pacote :(" << std::endl;
+        exit(11);
+    }
+    std::cout << "Você desistiu!" << std::endl;
     close(connfd);
 }
 
@@ -296,7 +341,7 @@ void end_match(int score1, int pipe) {
     unsigned char sndline[MAXLINE + 1];
     ssize_t n = p.header_to_string(sndline);
     if (write(pipe, sndline, n) < 0) {
-        printf("Erro ao direcionar à saída :(\n");
+        std::cout << "Erro ao direcionar à saída :(" << std::endl;
         exit(11);
     }
 }
@@ -307,36 +352,23 @@ void pingback(int fd) {
 
     ssize_t n = p.header_to_string(sndline);
     if (write(fd, sndline, n) < 0) {
-        printf("Erro ao direcionar à saída :(\n");
+        std::cout << "Erro ao direcionar à saída :(" << std::endl;
         exit(11);
     }
 }
 
-double get_ping(int pipe_to_read, int connfd) {
+void get_ping(int connfd) {
     PingReqPackage p;
     unsigned char sndline[MAXLINE + 1], recvline[MAXLINE + 1];
     ssize_t n = p.header_to_string(sndline);
-    if (write(connfd, sndline, n) < 0) return 0;
-
-    struct timespec start, finish;
-    double elapsed;
-
-    clock_gettime(CLOCK_MONOTONIC, &start);
-    if ((n = read(pipe_to_read, recvline, MAXLINE)) > 0) {
-        clock_gettime(CLOCK_MONOTONIC, &finish);
-
-        elapsed = (finish.tv_sec - start.tv_sec);
-        elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
-        return elapsed;
-    } else
-        return 0;
+    if (write(connfd, sndline, n) < 0) {
+        std::cout << "Erro no get_ping" << std::endl;
+        return;
+    }
 }
 
-void quit(pid_t *p1, pid_t *p2, pid_t *p3, int *trava, Table *t, int connfd) {
-    kill(*p1, SIGTERM);
-    kill(*p2, SIGTERM);
-    global_free(p1, sizeof(pid_t)), global_free(p2, sizeof(pid_t));
-    global_free(p3, sizeof(pid_t)), global_free(trava, sizeof(int));
+void quit(int *trava, Table *t, int connfd) {
+    global_free(trava, sizeof(int));
     global_free(t, sizeof(Table));
     close(connfd);
 }

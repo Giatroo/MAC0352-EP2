@@ -56,10 +56,10 @@ int Table::winner(){
 }
 
 void Table::print(){
-	fprintf(stdout, "-------------\n");
+	std::cout << "-------------" << std::endl;
 	for(int i = 0; i < 3; i++){
-		fprintf(stdout, "| %c | %c | %c |\n", t[i][0], t[i][1], t[i][2]);
-		fprintf(stdout, "-------------\n");
+		std::cout << "| " << t[i][0] << " | " << t[i][1] << " | " << t[i][2] << " |" << std::endl;
+		std::cout << "-------------" << std::endl;
 	}
 }
 

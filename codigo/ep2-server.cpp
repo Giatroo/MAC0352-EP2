@@ -136,6 +136,12 @@ void cmd_switch(ustring recvline, int n, int connfd) {
         case END_MATCH_PACKAGE: {
             // write_log_line(MATCH_FINISHED);
             printf("Jogador %d com pontuação %d\n", ind, (int) recvline[1]);
+            fflush(stdout);
+
+            users[*current_user]->score += (int)recvline[1];
+            users[*current_user]->client_invitation = 0;
+            users[*current_user]->in_match = false;
+            
             break;
         }
     }

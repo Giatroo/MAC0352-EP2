@@ -162,7 +162,11 @@ void invite_opponent(ustring recvline, user_t *invitor_user, int pipe) {
     int invited_id = find_user_index(invited_user->name);
     int invitor_id = find_user_index(invitor_user->name);
 
-    if (invited_user->client_invitation == 0 && invited_user->connected) {
+    if (invited_user->client_invitation == 0 && invited_user->connected
+        && users[*current_user]->name != invited_user->name) {
+        invited_user->in_match = true;
+        invitor_user->in_match = true;
+
         invitor_user->client_invitation = (1 << 5) * invited_id;
         invited_user->client_invitation =
             (1 << 5) * invitor_id + (1 << 4) + (1 << 3);
