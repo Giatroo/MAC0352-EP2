@@ -254,8 +254,6 @@ void *entrada(void *arg) {
 }
 
 int main(int argc, char **argv) {
-    ssize_t n;
-    uchar sendline[MAXLINE + 1], recvline[MAXLINE + 1];
     cur_username = "";
 
     if (argc != 3) {

@@ -36,8 +36,6 @@ int main(int argc, char **argv) {
     int listenfd, connfd;
     struct sockaddr_in servaddr;
     pid_t childpid;
-    unsigned char recvline[MAXLINE + 1], sndline[MAXLINE + 1];
-    ssize_t n;
 
     signal(SIGINT, exitHandler);
     father_pid = getpid();

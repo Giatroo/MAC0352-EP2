@@ -159,11 +159,11 @@ void *match_ui(void *args) {
     std::cout << "Algo deu ruim" << std::endl;
     *acabou = 0;
     quit(1);
+    return NULL;
 }
 
 void *match_entrada(void *args) {
     bool *aux_args = (bool *) args;
-    bool moving_first = aux_args[0];
     bool x = aux_args[1];
     ssize_t n;
     unsigned char recvline[MAXLINE + 1];
@@ -196,11 +196,10 @@ void *match_entrada(void *args) {
 
     std::cout << "Algo deu ruim" << std::endl;
     quit(0);
+    return NULL;
 }
 
 int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
-    unsigned char recvline[MAXLINE + 1];
-    int n;
     struct sockaddr_in servaddr, client_addr;
     socklen_t clen;
     acabou = (int *) global_malloc(sizeof(int));
@@ -409,7 +408,7 @@ void pingback(int fd) {
 
 void get_ping(int connfd) {
     PingReqPackage p;
-    unsigned char sndline[MAXLINE + 1], recvline[MAXLINE + 1];
+    unsigned char sndline[MAXLINE + 1];
     ssize_t n = p.header_to_string(sndline);
     if (write(connfd, sndline, n) < 0) {
         std::cout << "Erro no get_ping" << std::endl;
