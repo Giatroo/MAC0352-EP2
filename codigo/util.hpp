@@ -11,6 +11,7 @@
 #define LISTENQ 1
 #define MAXDATASIZE 100
 #define MAXLINE 4096
+#define DEBUG false
 
 #define debug(x)  std::cout << #x << " = " << x << std::endl
 

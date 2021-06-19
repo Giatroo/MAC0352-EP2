@@ -56,7 +56,7 @@ InviteOpponentAckPackage invite_opponent(int sockfd, int uifd) {
     InviteOpponentPackage p(client_name);
     int n = p.header_to_string(sndline);
 
-    print_in_hex(sndline, n);
+    if (DEBUG) print_in_hex(sndline, n);
     if (write(sockfd, sndline, n) < 0) {
         std::cout << "Erro ao direcionar à saída :(" << std::endl;
         exit(11);
@@ -79,10 +79,10 @@ int answer_opponent(std::string recvline) {
     if (recvline == "yes") {
         int ret = 1;
         std::string resp;
-        std::cout << "Deseja comecar?" << std::endl;
+        std::cout << "Deseja ser o primeiro a joga? (yes|no)" << std::endl;
         std::cin >> resp;
         if (resp == "yes") ret |= (1 << 1);
-        std::cout << "Deseja ser o X?" << std::endl;
+        std::cout << "Deseja ser o X? (yes|no)" << std::endl;
         std::cin >> resp;
         if (resp == "yes") ret |= (1 << 2);
         return ret;
@@ -97,12 +97,12 @@ double delay[3];
 int delay_ind;
 int delay_fds[2];
 
-int * acabou;
+int *acabou;
 
 Table t;
 pthread_t ui_match_thread, entrada_match_thread, latency_match_thread;
 
-void * match_latency(void * args){
+void *match_latency(void *args) {
     // Latencia
     while (true) {
         clock_gettime(CLOCK_MONOTONIC, &start_delay);
@@ -113,8 +113,8 @@ void * match_latency(void * args){
     quit(0);
 }
 
-void * match_ui(void * args){
-    bool * aux_args = (bool *)args;
+void *match_ui(void *args) {
+    bool *aux_args = (bool *) args;
     bool moving_first = aux_args[0];
     bool x = aux_args[1];
     /*
@@ -161,8 +161,8 @@ void * match_ui(void * args){
     quit(1);
 }
 
-void * match_entrada(void * args){
-    bool * aux_args = (bool *)args;
+void *match_entrada(void *args) {
+    bool *aux_args = (bool *) args;
     bool moving_first = aux_args[0];
     bool x = aux_args[1];
     ssize_t n;
@@ -203,7 +203,7 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
     int n;
     struct sockaddr_in servaddr, client_addr;
     socklen_t clen;
-    acabou = (int *)global_malloc(sizeof(int));
+    acabou = (int *) global_malloc(sizeof(int));
     *acabou = -1;
     trava_shell = 0;
     delay_ind = 0;
@@ -233,7 +233,7 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
         }
 
         if ((matchfd = accept(listenfd, (struct sockaddr *) &client_addr,
-                             &clen)) == -1) {
+                              &clen)) == -1) {
             perror("accept :(\n");
             exit(5);
         }
@@ -261,7 +261,7 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
     }
 
     pid_t childpid;
-    if((childpid = fork()) == 0){
+    if ((childpid = fork()) == 0) {
         std::cout << "JogoDaVelha> connected" << std::endl;
 
         /*
@@ -272,11 +272,10 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
             exit(1);
         }
 
-
         t.build();
         t.print();
 
-        bool args[2] = {moving_first, x};
+        bool args[2] = { moving_first, x };
 
         if (pthread_create(&ui_match_thread, NULL, match_ui, &args)) {
             printf("Erro ao criar thread UI\n");
@@ -291,7 +290,6 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
             exit(1);
         }
 
-
         if (pthread_join(ui_match_thread, NULL)) {
             printf("Erro ao dar join na thread ui\n");
             exit(1);
@@ -305,11 +303,8 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
             exit(1);
         }
         close(matchfd);
-    }
-    else{
-        while(*acabou == -1){
-            sleep(1);
-        }
+    } else {
+        while (*acabou == -1) { sleep(1); }
     }
     int pont = *acabou;
     global_free(acabou, sizeof(int));
@@ -349,9 +344,6 @@ int send_move(bool x, int connfd) {
 int get_move(bool x, ustring recvline) {
     SendMovePackage p;
     p.string_to_header(recvline);
-
-    debug(p.r);
-    debug(p.c);
 
     if (p.r == 0) {
         std::cout << "O outro jogador desistiu. Você ganhou!!" << std::endl;
@@ -425,8 +417,6 @@ void get_ping(int connfd) {
     }
 }
 
-void quit(int ui) {
-    exit(0);
-}
+void quit(int ui) { exit(0); }
 
 #endif /* ifndef CLIENT_FUNCTIONALITY_CPP */

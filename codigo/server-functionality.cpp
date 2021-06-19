@@ -185,15 +185,17 @@ void cmd_switch(ustring recvline, int n, int connfd) {
 
     if (return_package != nullptr) {
         len = return_package->header_to_string(sendline);
-        print_in_hex(sendline, len);
+
+        if (DEBUG) print_in_hex(sendline, len);
+
         write(connfd, sendline, len);
     }
 }
 
-void * heartbeat_handler_thread(void * args){
-	int connfd = *((int *)args);
+void *heartbeat_handler_thread(void *args) {
+    int connfd = *((int *) args);
     while (true) {
-       	if (pingreq(connfd, &heartbeat_resp) == 0) {
+        if (pingreq(connfd, &heartbeat_resp) == 0) {
             fprintf(stderr, "Cliente Morreu :(\n");
             break;
         }
@@ -209,16 +211,16 @@ void * heartbeat_handler_thread(void * args){
     write_log_line(UNEXPECTED_DISCONNECT, log_struct);
 
     printf("[Uma conexão fechada (PID = %d)]\n", getpid());
-    exit (0);
+    exit(0);
 
     return NULL;
 }
 
-void * invitation_handler_thread(void * args){
-	int connfd = *((int *)args);
+void *invitation_handler_thread(void *args) {
+    int connfd = *((int *) args);
     while (true) {
-       	/*
-           	TODO: Semaforizar?
+        /*
+            TODO: Semaforizar?
         */
         if (*current_user == -1) {
             sleep(1);
@@ -226,58 +228,63 @@ void * invitation_handler_thread(void * args){
         }
 
         if (new_update_client_invitation(
-            users[*current_user]->client_invitation)) {
-        	if (is_invited(users[*current_user]->client_invitation)) {
-                int invitor_id = users[*current_user]->client_invitation /(1 << 5);
+                users[*current_user]->client_invitation)) {
+            if (is_invited(users[*current_user]->client_invitation)) {
+                int invitor_id =
+                    users[*current_user]->client_invitation / (1 << 5);
                 user_t *invitor_user = find_user(invitor_id);
                 send_invitation_package(invitor_user->name, connfd);
-               	users[*current_user]->client_invitation ^= (1 << 3);
+                users[*current_user]->client_invitation ^= (1 << 3);
             } else {
-                int invited = users[*current_user]->client_invitation /(1 << 5);
-                int resp = users[*current_user]->client_invitation %(1 << 3);
+                int invited =
+                    users[*current_user]->client_invitation / (1 << 5);
+                int resp = users[*current_user]->client_invitation % (1 << 3);
 
-              	user_t *invited_user = find_user(invited);
+                user_t *invited_user = find_user(invited);
 
-                send_invitation_ack_package(resp, invited_user->ip,\
-                    invited_user->port,connfd);
+                send_invitation_ack_package(resp, invited_user->ip,
+                                            invited_user->port, connfd);
 
                 if (resp == 0)
                     users[*current_user]->client_invitation = 0;
                 else
-                    users[*current_user]->client_invitation ^=(1 << 3);
+                    users[*current_user]->client_invitation ^= (1 << 3);
             }
         }
 
-    	sleep(1);
+        sleep(1);
     }
 
     return NULL;
 }
 
-void * entrada_handler_thread(void * args){
-	int connfd = *((int *)args);
-	unsigned char recvline[MAXLINE + 1];
-	ssize_t n;
+void *entrada_handler_thread(void *args) {
+    int connfd = *((int *) args);
+    unsigned char recvline[MAXLINE + 1];
+    ssize_t n;
     while ((n = read(connfd, recvline, MAXLINE)) > 0) {
         recvline[n] = 0;
-        fprintf(stdout, "Recebido: ");
-        print_in_hex(recvline, n);
+
+        if (DEBUG) {
+            fprintf(stdout, "Recebido: ");
+            print_in_hex(recvline, n);
+        }
+
         cmd_switch(recvline, n, connfd);
     }
 
-    if(*current_user != -1){
-	    users[*current_user]->connected = false;
-	    users[*current_user]->in_match = false;
+    if (*current_user != -1) {
+        users[*current_user]->connected = false;
+        users[*current_user]->in_match = false;
     }
     close(connfd);
 
     log_struct_t log_struct;
     log_struct.client_ip = inet_ntoa(client_addr.sin_addr);
     write_log_line(CLIENT_DISCONNECT, log_struct);
-	printf("[Uma conexão fechada (PID = %d)]\n", getpid());
+    printf("[Uma conexão fechada (PID = %d)]\n", getpid());
 
-
-    exit (0);
+    exit(0);
     return NULL;
 }
 
@@ -429,8 +436,8 @@ void invite_opponent(ustring recvline, user_t *invitor_user, int pipe) {
     int invited_id = find_user_index(invited_user->name);
     int invitor_id = find_user_index(invitor_user->name);
 
-    if (invited_user->client_invitation == 0 && invited_user->connected
-        && users[*current_user]->name != invited_user->name) {
+    if (invited_user->client_invitation == 0 && invited_user->connected &&
+        users[*current_user]->name != invited_user->name) {
         invited_user->in_match = true;
         invitor_user->in_match = true;
 

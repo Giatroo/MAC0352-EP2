@@ -82,17 +82,23 @@ int main(int argc, char **argv) {
             exit(5);
         }
 
-        cout << "ip = " << client_addr.sin_addr.s_addr << endl;
-        cout << "port = " << client_addr.sin_port << endl;
-        debug(connfd);
-        debug(clen);
+        // temp
+        if (DEBUG) {
+            cout << "ip = " << client_addr.sin_addr.s_addr << endl;
+            cout << "port = " << client_addr.sin_port << endl;
+            debug(connfd);
+            debug(clen);
+        }
 
         if ((childpid = fork()) == 0) {
             /**** PROCESSO FILHO ****/
             fprintf(stdout, "[Uma conexão aberta (PID = %d)]\n", getpid());
             close(listenfd);
-            printf("IP address is: %s\n", inet_ntoa(client_addr.sin_addr));
-            printf("port is: %d\n", (int) ntohs(client_addr.sin_port));
+
+            if (DEBUG) {
+                printf("IP address is: %s\n", inet_ntoa(client_addr.sin_addr));
+                printf("port is: %d\n", (int) ntohs(client_addr.sin_port));
+            }
 
             log_struct_t log_struct;
             log_struct.client_ip = inet_ntoa(client_addr.sin_addr);
@@ -101,9 +107,11 @@ int main(int argc, char **argv) {
             current_user = (int *) global_malloc(sizeof(int));
             *current_user = -1;
 
-            fprintf(stdout, "Usuários:\n");
-            for (int i = 0; i < total_users[0]; i++) {
-                cout << *users[i] << endl;
+            if (DEBUG) {
+                fprintf(stdout, "Usuários:\n");
+                for (int i = 0; i < total_users[0]; i++) {
+                    cout << *users[i] << endl;
+                }
             }
 
             int pipefds[2];
@@ -113,15 +121,18 @@ int main(int argc, char **argv) {
             }
 
             pthread_t heartbeat_t, invitation_t, entrada_t;
-            if (pthread_create(&heartbeat_t, NULL, heartbeat_handler_thread, (void *)&connfd)) {
+            if (pthread_create(&heartbeat_t, NULL, heartbeat_handler_thread,
+                               (void *) &connfd)) {
                 printf("Erro ao criar thread heartbeat\n");
                 exit(1);
             }
-            if (pthread_create(&invitation_t, NULL, invitation_handler_thread, (void *)&connfd)) {
+            if (pthread_create(&invitation_t, NULL, invitation_handler_thread,
+                               (void *) &connfd)) {
                 printf("Erro ao criar thread Invitation\n");
                 exit(1);
             }
-            if (pthread_create(&entrada_t, NULL, entrada_handler_thread, (void *)&connfd)) {
+            if (pthread_create(&entrada_t, NULL, entrada_handler_thread,
+                               (void *) &connfd)) {
                 printf("Erro ao criar thread Entrada\n");
                 exit(1);
             }

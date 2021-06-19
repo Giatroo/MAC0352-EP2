@@ -37,7 +37,8 @@ void cmd_switch() {
             CreateUserPackage create_user_package =
                 CreateUserPackage(username, password);
             len = create_user_package.header_to_string(sendline);
-            print_in_hex(sendline, len);
+
+            if (DEBUG) print_in_hex(sendline, len);
             write(sockfd, sendline, len);
 
             break;
@@ -47,7 +48,8 @@ void cmd_switch() {
             LoginPackage login_package = LoginPackage(username, password);
 
             len = login_package.header_to_string(sendline);
-            print_in_hex(sendline, len);
+
+            if (DEBUG) print_in_hex(sendline, len);
             write(sockfd, sendline, len);
 
             cur_username = username;
@@ -58,7 +60,8 @@ void cmd_switch() {
             LogoutPackage logout_package = LogoutPackage();
 
             len = logout_package.header_to_string(sendline);
-            print_in_hex(sendline, len);
+
+            if (DEBUG) print_in_hex(sendline, len);
             write(sockfd, sendline, len);
 
             break;
@@ -69,7 +72,8 @@ void cmd_switch() {
                 ChangePasswordPackage(cur_password, new_password);
 
             len = change_password_package.header_to_string(sendline);
-            print_in_hex(sendline, len);
+
+            if (DEBUG) print_in_hex(sendline, len);
             write(sockfd, sendline, len);
 
             break;
@@ -79,7 +83,8 @@ void cmd_switch() {
                 ReqConnectedUsersPackage();
 
             len = req_connected_users_package.header_to_string(sendline);
-            print_in_hex(sendline, len);
+
+            if (DEBUG) print_in_hex(sendline, len);
             write(sockfd, sendline, len);
 
             break;
@@ -89,7 +94,8 @@ void cmd_switch() {
                 ReqClassificationsPackage();
 
             len = req_classifications_package.header_to_string(sendline);
-            print_in_hex(sendline, len);
+
+            if (DEBUG) print_in_hex(sendline, len);
             write(sockfd, sendline, len);
 
             break;
@@ -156,8 +162,10 @@ void *entrada(void *arg) {
         while ((n = read(sockfd, recvline, MAXLINE)) > 0) {
             recvline[n] = 0;
 
-            fprintf(stdout, "Recebido: ");
-            print_in_hex(recvline, n);
+            if (DEBUG) {
+                fprintf(stdout, "Recebido: ");
+                print_in_hex(recvline, n);
+            }
 
             if (recvline[0] == PINGREQ_PACKAGE)
                 pingback(sockfd);
@@ -165,7 +173,7 @@ void *entrada(void *arg) {
                 InviteOpponentPackage p(recvline);
                 cout << "Usuário " << p.cliente
                      << " está te convidando para jogar um jogo!" << endl;
-                cout << "Aceita o convite?(Digite yes ou no)" << endl;
+                cout << "Aceita o convite? (yes|no)" << endl;
             } else if (recvline[0] == INVITE_OPPONENT_ACK_PACKAGE) {
                 if (write(uifds[1], recvline, n) < 0) {
                     printf("Erro ao direcionar à saída :(\n");
@@ -209,8 +217,7 @@ void *entrada(void *arg) {
             }
         }
         int new_socket;
-        cout << "Servidor caiu!"
-             << " " << getpid() << endl;
+        cout << "Servidor caiu!" << getpid() << endl;
         sleep(1);
         if ((new_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
             fprintf(stderr, "socket error :( \n");
@@ -238,7 +245,7 @@ void *entrada(void *arg) {
         if (!voltou) {
             cout << "Servidor caiu!" << endl;
             close(sockfd);
-            exit (0);
+            exit(0);
             break;
         }
         sleep(1);
@@ -275,7 +282,7 @@ int main(int argc, char **argv) {
         exit(4);
     }
 
-    fprintf(stdout, "connected\n");
+    if (DEBUG) { fprintf(stdout, "connected\n"); }
 
     if (pipe(uifds)) {
         fprintf(stderr, "Erro ao criar pipe\n");
@@ -308,6 +315,6 @@ int main(int argc, char **argv) {
     close(uifds[0]), close(uifds[1]);
     global_free(pid_jogo_ui, sizeof(pid_t));
     global_free(pid_jogo_latencia, sizeof(pid_t));
-    std::cout << "Matou todo mundo" << std::endl;
+    if (DEBUG) std::cout << "Matou todo mundo" << std::endl;
     exit(0);
 }
