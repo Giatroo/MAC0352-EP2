@@ -68,7 +68,7 @@ InviteOpponentAckPackage invite_opponent(int sockfd, int uifd) {
             std::cout << "Usuário aceitou o jogo!" << std::endl;
             pa.string_to_header(recvline);
         } else {
-            std::cout << "Usuário recusou o jogo!" << std::endl;
+            std::cout << "Não foi possível começar o jogo!" << std::endl;
         }
     }
     return pa;

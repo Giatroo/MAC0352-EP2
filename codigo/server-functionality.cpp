@@ -422,7 +422,7 @@ void invite_opponent(ustring recvline, user_t *invitor_user, int pipe) {
 
     if (invited_user == nullptr) {
         // O jogador convidado não existe
-        std::cerr << "O jogador convidado não existe" << std::endl;
+        //std::cerr << "O jogador convidado não existe" << std::endl;
         unsigned char sndline[MAXLINE + 1];
         InviteOpponentAckPackage p(0);
         ssize_t n = p.header_to_string(sndline);
@@ -448,7 +448,6 @@ void invite_opponent(ustring recvline, user_t *invitor_user, int pipe) {
         debug(invited_user->client_invitation);
     } else {
         // Jogador está ocupado e o servidor recusa
-        std::cerr << "O jogador está ocupado" << std::endl;
         unsigned char sndline[MAXLINE + 1];
         InviteOpponentAckPackage p(0);
         ssize_t n = p.header_to_string(sndline);
