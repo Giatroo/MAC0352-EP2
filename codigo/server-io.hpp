@@ -57,9 +57,6 @@ class log_struct_t {
     std::string player2_name;
     char *player2_ip;
     std::string winner_name;
-    char *winner_ip;
-    std::string loser_name;
-    char *loser_ip;
 };
 
 void write_log_line(log_t, log_struct_t);

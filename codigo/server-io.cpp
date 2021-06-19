@@ -132,11 +132,12 @@ void write_log_line(log_t log_entry, log_struct_t log_struct) {
                      << " name2 = " << log_struct.player2_name;
             break;
         case MATCH_FINISHED:
-            log_file << "match finished";
-            log_file << " ip_winner = " << log_struct.winner_ip
-                     << " winner_name = " << log_struct.winner_name
-                     << " ip_loser = " << log_struct.loser_ip
-                     << " name_loser = " << log_struct.loser_name;
+            log_file << "match finished."
+                     << " ip1 = " << log_struct.player1_ip
+                     << " name1 = " << log_struct.player1_name
+                     << " ip2 = " << log_struct.player2_ip
+                     << " name2 = " << log_struct.player2_name
+                     << " winner = " << log_struct.winner_name;
             break;
         case UNEXPECTED_DISCONNECT:
             log_file << "unexpected disconnect. ip = " << log_struct.client_ip;

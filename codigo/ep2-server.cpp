@@ -174,19 +174,17 @@ void cmd_switch(ustring recvline, int n, int connfd) {
                     users[*current_user]->client_invitation / (1 << 5);
                 user_t *opponent = find_user(opponent_index);
 
+                log_struct.player1_ip = users[*current_user]->ip;
+                log_struct.player1_name = users[*current_user]->name;
+                log_struct.player2_ip = opponent->ip;
+                log_struct.player2_name = opponent->name;
+
                 if (recvline[1] == 2) { // eu ganhei
-                    log_struct.winner_ip = users[*current_user]->ip;
                     log_struct.winner_name = users[*current_user]->name;
-                    log_struct.loser_ip = opponent->ip;
-                    log_struct.loser_name = opponent->name;
                 } else if (recvline[1] == 1) { // empate
-
+                    log_struct.winner_name = "";
                 } else if (recvline[1] == 0) { // eu perdi
-                    log_struct.loser_ip = users[*current_user]->ip;
-                    log_struct.loser_name = users[*current_user]->name;
-                    log_struct.winner_ip = opponent->ip;
                     log_struct.winner_name = opponent->name;
-
                 }
 
                 write_log_line(MATCH_FINISHED, log_struct);
@@ -266,6 +264,7 @@ int main(int argc, char **argv) {
 
     log_struct_t log_struct;
     write_log_line(SERVER_STARTED, log_struct);
+    memset(&client_addr, 0, sizeof(client_addr));
 
     while (1) {
         socklen_t clen;
@@ -275,6 +274,11 @@ int main(int argc, char **argv) {
             perror("accept :(\n");
             exit(5);
         }
+
+        cout << "ip = " << client_addr.sin_addr.s_addr << endl;
+        cout << "port = " << client_addr.sin_port << endl;
+        debug(connfd);
+        debug(clen);
 
         if ((childpid = fork()) == 0) {
             /**** PROCESSO FILHO ****/
