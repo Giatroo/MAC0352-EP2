@@ -13,6 +13,276 @@
 #include "util.hpp"
 
 int *current_user;
+struct sockaddr_in client_addr;
+int heartbeat_resp;
+
+void cmd_switch(ustring recvline, int n, int connfd) {
+    byte package_type;
+    ssize_t len;
+    std::string user, password, cur_password, new_password;
+    uchar sendline[MAXLINE + 1];
+    package_type = recvline[0];
+    PackageTemplate *return_package = nullptr;
+
+    switch (package_type) {
+        case RECONNECT_PACKAGE: {
+            std::cout << "User reconnecting" << std::endl;
+            ReconnectPackage reconnect_pkg(recvline);
+            if (reconnect_pkg.username != "") {
+                *current_user = find_user_index(reconnect_pkg.username);
+                debug(*current_user);
+            }
+            break;
+        }
+        case CREATE_USER_PACKAGE: {
+            std::cout << "Creating user" << std::endl;
+            CreateUserPackage create_user_package = CreateUserPackage(recvline);
+            log_struct_t log_struct;
+
+            user_t *new_user;
+            new_user = create_user(create_user_package.username,
+                                   create_user_package.password);
+
+            log_struct.client_ip = inet_ntoa(client_addr.sin_addr);
+            log_struct.username = create_user_package.username;
+
+            if (new_user == nullptr) {
+                write_log_line(UNSUCCESS_USER_CREATED, log_struct);
+                return_package = new CreateUserAckPackage((byte) 0);
+            } else {
+                write_log_line(SUCCESS_USER_CREATED, log_struct);
+                std::cout << *new_user << std::endl;
+                return_package = new CreateUserAckPackage((byte) 1);
+            }
+            break;
+        }
+        case LOGIN_PACKAGE: {
+            std::cout << "Logining in" << std::endl;
+            LoginPackage login_package = LoginPackage(recvline);
+            log_struct_t log_struct;
+
+            bool success_login =
+                user_login(login_package.user_login,
+                           login_package.user_password, client_addr);
+
+            log_struct.username = login_package.user_login;
+            log_struct.client_ip = inet_ntoa(client_addr.sin_addr);
+
+            if (success_login == true) {
+                std::cout << "Sucesso" << std::endl;
+                write_log_line(SUCCESS_LOGIN, log_struct);
+                return_package = new LoginAckPackage((byte) 1);
+            } else {
+                std::cout << "Não sucesso" << std::endl;
+                write_log_line(UNSUCCESS_LOGIN, log_struct);
+                return_package = new LoginAckPackage((byte) 0);
+            }
+            break;
+        }
+        case CHANGE_PASSWORD_PACKAGE: {
+            std::cout << "Password change" << std::endl;
+            ChangePasswordPackage change_password_package =
+                ChangePasswordPackage(recvline);
+            log_struct_t log_struct;
+
+            bool success_change_pass =
+                change_password(change_password_package.cur_password,
+                                change_password_package.new_password);
+
+            log_struct.client_ip = inet_ntoa(client_addr.sin_addr);
+            log_struct.username = users[*current_user]->name;
+
+            if (success_change_pass == true) {
+                std::cout << "Sucesso" << std::endl;
+                write_log_line(SUCCESS_CHANGE_PASS, log_struct);
+                return_package = new ChangePasswordAckPackage((byte) 1);
+            } else {
+                std::cout << "Não sucesso" << std::endl;
+                write_log_line(UNSUCCESS_CHANGE_PASS, log_struct);
+                return_package = new ChangePasswordAckPackage((byte) 0);
+            }
+            break;
+        }
+        case LOGOUT_PACKAGE: {
+            std::cout << "Logout" << std::endl;
+            log_struct_t log_struct;
+
+            if (*current_user == -1) { break; }
+
+            log_struct.client_ip = inet_ntoa(client_addr.sin_addr);
+            log_struct.username = users[*current_user]->name;
+
+            bool success_logout = user_logout();
+
+            if (success_logout == true) {
+                write_log_line(SUCCESS_LOGOUT, log_struct);
+                std::cout << "Sucesso" << std::endl;
+            } else {
+                std::cout << "Não sucesso" << std::endl;
+            }
+            break;
+        }
+
+        case REQUEST_ALL_CONNECTED_USERS_PACKAGE: {
+            std::cout << "Listing" << std::endl;
+            return_package = new ResConnectedUsersPackage();
+
+            show_all_connected_users();
+
+            break;
+        }
+
+        case REQUEST_CLASSIFICATIONS_PACKAGE: {
+            std::cout << "Leaders" << std::endl;
+            return_package = new ResClassificationsPackage();
+            break;
+        }
+        case PINGBACK_PACKAGE: {
+            heartbeat_resp = 1;
+            break;
+        }
+        case INVITE_OPPONENT_PACKAGE: {
+            /* TODO: Semaforizar?  */
+            std::cout << "Convidando" << std::endl;
+            invite_opponent(recvline, users[*current_user], connfd);
+            break;
+        }
+        case INVITE_OPPONENT_ACK_PACKAGE: {
+            process_invitation_ack(recvline, users[*current_user]);
+            break;
+        }
+        case END_MATCH_PACKAGE: {
+            // write_log_line(MATCH_FINISHED);
+
+            if (is_invited(users[*current_user]->client_invitation)) {
+                log_struct_t log_struct;
+                int opponent_index =
+                    users[*current_user]->client_invitation / (1 << 5);
+                user_t *opponent = find_user(opponent_index);
+
+                if (recvline[1] == 2) { // eu ganhei
+                    log_struct.winner_ip = users[*current_user]->ip;
+                    log_struct.winner_name = users[*current_user]->name;
+                    log_struct.loser_ip = opponent->ip;
+                    log_struct.loser_name = opponent->name;
+                } else if (recvline[1] == 1) { // empate
+
+                } else if (recvline[1] == 0) { // eu perdi
+                    log_struct.loser_ip = users[*current_user]->ip;
+                    log_struct.loser_name = users[*current_user]->name;
+                    log_struct.winner_ip = opponent->ip;
+                    log_struct.winner_name = opponent->name;
+
+                }
+
+                write_log_line(MATCH_FINISHED, log_struct);
+            }
+
+            users[*current_user]->score += (int) recvline[1];
+            users[*current_user]->client_invitation = 0;
+            users[*current_user]->in_match = false;
+
+            break;
+        }
+    }
+
+    if (return_package != nullptr) {
+        len = return_package->header_to_string(sendline);
+        print_in_hex(sendline, len);
+        write(connfd, sendline, len);
+    }
+}
+
+void * heartbeat_handler_thread(void * args){
+	int connfd = *((int *)args);
+    while (true) {
+       	if (pingreq(connfd, &heartbeat_resp) == 0) {
+            fprintf(stderr, "Cliente Morreu :(\n");
+            break;
+        }
+    }
+
+    users[*current_user]->connected = false;
+    users[*current_user]->in_match = false;
+
+    close(connfd);
+
+    log_struct_t log_struct;
+    log_struct.client_ip = inet_ntoa(client_addr.sin_addr);
+    write_log_line(CLIENT_DISCONNECT, log_struct);
+
+    printf("[Uma conexão fechada (PID = %d)]\n", getpid());
+    exit (0);
+
+    return NULL;
+}
+
+void * invitation_handler_thread(void * args){
+	int connfd = *((int *)args);
+    while (true) {
+       	/*
+           	TODO: Semaforizar?
+        */
+        if (*current_user == -1) {
+            sleep(1);
+            continue;
+        }
+
+        if (new_update_client_invitation(
+            users[*current_user]->client_invitation)) {
+        	if (is_invited(users[*current_user]->client_invitation)) {
+                int invitor_id = users[*current_user]->client_invitation /(1 << 5);
+                user_t *invitor_user = find_user(invitor_id);
+                send_invitation_package(invitor_user->name, connfd);
+               	users[*current_user]->client_invitation ^= (1 << 3);
+            } else {
+                int invited = users[*current_user]->client_invitation /(1 << 5);
+                int resp = users[*current_user]->client_invitation %(1 << 3);
+
+              	user_t *invited_user = find_user(invited);
+
+                send_invitation_ack_package(resp, invited_user->ip,\
+                    invited_user->port,connfd);
+
+                if (resp == 0)
+                    users[*current_user]->client_invitation = 0;
+                else
+                    users[*current_user]->client_invitation ^=(1 << 3);
+            }
+        }
+
+    	sleep(1);
+    }
+
+    return NULL;
+}
+
+void * entrada_handler_thread(void * args){
+	int connfd = *((int *)args);
+	unsigned char recvline[MAXLINE + 1];
+	ssize_t n;
+    while ((n = read(connfd, recvline, MAXLINE)) > 0) {
+        recvline[n] = 0;
+        fprintf(stdout, "Recebido: ");
+        print_in_hex(recvline, n);
+        cmd_switch(recvline, n, connfd);
+    }
+
+    if(*current_user != -1){
+	    users[*current_user]->connected = false;
+	    users[*current_user]->in_match = false;
+    }
+    close(connfd);
+
+    log_struct_t log_struct;
+    log_struct.client_ip = inet_ntoa(client_addr.sin_addr);
+    write_log_line(CLIENT_DISCONNECT, log_struct);
+	printf("[Uma conexão fechada (PID = %d)]\n", getpid());
+
+
+    exit (0);
+    return NULL;
+}
 
 user_t *find_user(std::string name) {
     user_t *ret_user = nullptr;

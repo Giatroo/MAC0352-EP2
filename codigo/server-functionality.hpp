@@ -10,6 +10,20 @@
 #include "server-io.hpp"
 
 extern int* current_user;
+extern struct sockaddr_in client_addr;
+
+// Recebe um pacote(recvline), o tamanho dele e o file descriptor e analisa
+// qual pacote ele é
+void cmd_switch(ustring recvline, int n, int connfd);
+
+// Função da thread que lida com os heartbeats
+void * heartbeat_handler_thread(void * args);
+
+// Função da thread que lida com os convites
+void * invitation_handler_thread(void * args);
+
+// Função da thread que lida com a entrada de pacotes
+void * entrada_handler_thread(void * args);
 
 // Procura o usuário nos usuários existentes.
 // Se ele existir, o retorna. Caso contrário, retorna nullptr.
