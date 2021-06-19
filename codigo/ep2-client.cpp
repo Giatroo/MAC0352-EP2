@@ -158,7 +158,6 @@ void *entrada(void *arg) {
     ssize_t n;
 
     while (true) {
-        cout << "Servidor voltou!" << endl;
         while ((n = read(sockfd, recvline, MAXLINE)) > 0) {
             recvline[n] = 0;
 
@@ -217,7 +216,7 @@ void *entrada(void *arg) {
             }
         }
         int new_socket;
-        cout << "Servidor caiu!" << getpid() << endl;
+        cout << "Servidor caiu!" << endl;
         sleep(1);
         if ((new_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
             fprintf(stderr, "socket error :( \n");
@@ -231,7 +230,6 @@ void *entrada(void *arg) {
                         sizeof(servaddr)) < 0) {
                 sleep(1);
             } else {
-                debug(new_socket);
                 sockfd = new_socket;
                 voltou = true;
 
@@ -239,11 +237,13 @@ void *entrada(void *arg) {
                 n = reconnect_pkg.package_to_string(sendline);
                 write(sockfd, sendline, n);
 
+                cout << "Servidor voltou!" << endl;
+        
                 break;
             }
         }
         if (!voltou) {
-            cout << "Servidor caiu!" << endl;
+            cout << "Servidor caiu de vez, encerrando o processo..." << endl;
             close(sockfd);
             exit(0);
             break;
