@@ -39,9 +39,8 @@ int get_free_port() {
     while (true) {
         port = rand() % 60000 + 5535;
         sin.sin_port = htons(port);
-        if (bind(sockefds, (struct sockaddr *) &sin,
-                 sizeof(struct sockaddr_in)) == -1) {
-            if (errno == EADDRINUSE) printf("Port in use");
+        if (bind(sockefds, (struct sockaddr *) &sin, sizeof(struct sockaddr_in)) == -1) {
+            continue;
         } else {
             close(sockefds);
             return port;
