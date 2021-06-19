@@ -56,7 +56,11 @@ void cmd_switch() {
 
             break;
         }
-        case LOGOUT: {
+        case LOGOUT: {            
+            if(cur_username == ""){
+                cout << "Você precisa estar logado para usar esse comando!" << endl;
+                break;
+            }
             LogoutPackage logout_package = LogoutPackage();
 
             len = logout_package.package_to_string(sendline);
@@ -101,6 +105,10 @@ void cmd_switch() {
             break;
         }
         case BEGIN: {
+            if(cur_username == ""){
+                cout << "Você precisa estar logado para usar esse comando!" << endl;
+                break;
+            }
             InviteOpponentAckPackage p(0);
             p = invite_opponent(sockfd, uifds[0]);
 

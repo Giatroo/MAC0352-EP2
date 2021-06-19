@@ -16,3 +16,6 @@
 [Sat Jun 19 16:46:45 2021]: user logout. ip = 127.0.0.1 name = lucas
 [Sat Jun 19 16:46:46 2021]: client disconnected. ip = 127.0.0.1
 [Sat Jun 19 16:46:48 2021]: server finished
+[Sat Jun 19 19:00:24 2021]: server started.
+[Sat Jun 19 19:01:26 2021]: client connected. ip = 192.168.15.101
+[Sat Jun 19 19:03:35 2021]: server finished
