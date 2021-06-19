@@ -36,7 +36,7 @@ void cmd_switch() {
             cin >> username >> password;
             CreateUserPackage create_user_package =
                 CreateUserPackage(username, password);
-            len = create_user_package.header_to_string(sendline);
+            len = create_user_package.package_to_string(sendline);
 
             if (DEBUG) print_in_hex(sendline, len);
             write(sockfd, sendline, len);
@@ -47,7 +47,7 @@ void cmd_switch() {
             cin >> username >> password;
             LoginPackage login_package = LoginPackage(username, password);
 
-            len = login_package.header_to_string(sendline);
+            len = login_package.package_to_string(sendline);
 
             if (DEBUG) print_in_hex(sendline, len);
             write(sockfd, sendline, len);
@@ -59,7 +59,7 @@ void cmd_switch() {
         case LOGOUT: {
             LogoutPackage logout_package = LogoutPackage();
 
-            len = logout_package.header_to_string(sendline);
+            len = logout_package.package_to_string(sendline);
 
             if (DEBUG) print_in_hex(sendline, len);
             write(sockfd, sendline, len);
@@ -71,7 +71,7 @@ void cmd_switch() {
             ChangePasswordPackage change_password_package =
                 ChangePasswordPackage(cur_password, new_password);
 
-            len = change_password_package.header_to_string(sendline);
+            len = change_password_package.package_to_string(sendline);
 
             if (DEBUG) print_in_hex(sendline, len);
             write(sockfd, sendline, len);
@@ -82,7 +82,7 @@ void cmd_switch() {
             ReqConnectedUsersPackage req_connected_users_package =
                 ReqConnectedUsersPackage();
 
-            len = req_connected_users_package.header_to_string(sendline);
+            len = req_connected_users_package.package_to_string(sendline);
 
             if (DEBUG) print_in_hex(sendline, len);
             write(sockfd, sendline, len);
@@ -93,7 +93,7 @@ void cmd_switch() {
             ReqClassificationsPackage req_classifications_package =
                 ReqClassificationsPackage();
 
-            len = req_classifications_package.header_to_string(sendline);
+            len = req_classifications_package.package_to_string(sendline);
 
             if (DEBUG) print_in_hex(sendline, len);
             write(sockfd, sendline, len);
@@ -122,7 +122,7 @@ void cmd_switch() {
 
             InviteOpponentAckPackage p(resp);
             p.port = get_free_port();
-            len = p.header_to_string(sendline);
+            len = p.package_to_string(sendline);
             if (write(sockfd, sendline, len) < 0) {
                 printf("Erro ao direcionar à saída :(\n");
                 exit(11);
@@ -236,7 +236,7 @@ void *entrada(void *arg) {
                 voltou = true;
 
                 ReconnectPackage reconnect_pkg(cur_username);
-                n = reconnect_pkg.header_to_string(sendline);
+                n = reconnect_pkg.package_to_string(sendline);
                 write(sockfd, sendline, n);
 
                 break;

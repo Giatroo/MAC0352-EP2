@@ -32,13 +32,13 @@ typedef enum {
 
 class FixedHeader {
   public:
-    byte header_type;
+    byte package_type;
     int remaning_length;
 
     FixedHeader();
     FixedHeader(ustring recvline);
 
-    ustring header_to_string();
+    ustring package_to_string();
     void write(ustring line, int &pos);
 };
 
@@ -48,7 +48,7 @@ class PackageTemplate {
 
     FixedHeader fixed_header;
 
-    virtual ssize_t header_to_string(ustring line) = 0;
+    virtual ssize_t package_to_string(ustring line) = 0;
 };
 
 class CreateUserPackage : public PackageTemplate {
@@ -59,7 +59,7 @@ class CreateUserPackage : public PackageTemplate {
     std::string username;
     std::string password;
 
-    ssize_t header_to_string(ustring line);
+    ssize_t package_to_string(ustring line);
 };
 
 class CreateUserAckPackage : public PackageTemplate {
@@ -69,7 +69,7 @@ class CreateUserAckPackage : public PackageTemplate {
     CreateUserAckPackage(byte);
     CreateUserAckPackage(ustring line);
 
-    ssize_t header_to_string(ustring line);
+    ssize_t package_to_string(ustring line);
 };
 
 class LoginPackage : public PackageTemplate {
@@ -80,7 +80,7 @@ class LoginPackage : public PackageTemplate {
     std::string user_login;
     std::string user_password;
 
-    ssize_t header_to_string(ustring line);
+    ssize_t package_to_string(ustring line);
 };
 
 class LoginAckPackage : public PackageTemplate {
@@ -90,7 +90,7 @@ class LoginAckPackage : public PackageTemplate {
     LoginAckPackage(byte);
     LoginAckPackage(ustring recvline);
 
-    ssize_t header_to_string(ustring line);
+    ssize_t package_to_string(ustring line);
 };
 
 class LogoutPackage : public PackageTemplate {
@@ -98,7 +98,7 @@ class LogoutPackage : public PackageTemplate {
     LogoutPackage();
     LogoutPackage(ustring recvline);
 
-    ssize_t header_to_string(ustring line);
+    ssize_t package_to_string(ustring line);
 };
 
 class ChangePasswordPackage : public PackageTemplate {
@@ -109,7 +109,7 @@ class ChangePasswordPackage : public PackageTemplate {
     ChangePasswordPackage(std::string, std::string);
     ChangePasswordPackage(ustring recvline);
 
-    ssize_t header_to_string(ustring line);
+    ssize_t package_to_string(ustring line);
 };
 
 class ChangePasswordAckPackage : public PackageTemplate {
@@ -119,7 +119,7 @@ class ChangePasswordAckPackage : public PackageTemplate {
     ChangePasswordAckPackage(byte);
     ChangePasswordAckPackage(ustring recvline);
 
-    ssize_t header_to_string(ustring line);
+    ssize_t package_to_string(ustring line);
 };
 
 class ReqConnectedUsersPackage : public PackageTemplate {
@@ -127,7 +127,7 @@ class ReqConnectedUsersPackage : public PackageTemplate {
     ReqConnectedUsersPackage();
     ReqConnectedUsersPackage(ustring recvline);
 
-    ssize_t header_to_string(ustring line);
+    ssize_t package_to_string(ustring line);
 };
 
 class ResConnectedUsersPackage : public PackageTemplate {
@@ -138,7 +138,7 @@ class ResConnectedUsersPackage : public PackageTemplate {
     int num_users;
     user_t pkg_users[MAX_USERS];
 
-    ssize_t header_to_string(ustring line);
+    ssize_t package_to_string(ustring line);
     void show_users();
 };
 
@@ -147,7 +147,7 @@ class ReqClassificationsPackage : public PackageTemplate {
     ReqClassificationsPackage();
     ReqClassificationsPackage(ustring recvline);
 
-    ssize_t header_to_string(ustring line);
+    ssize_t package_to_string(ustring line);
 };
 
 class ResClassificationsPackage : public PackageTemplate {
@@ -158,20 +158,20 @@ class ResClassificationsPackage : public PackageTemplate {
     int num_users;
     user_t pkg_users[MAX_USERS];
 
-    ssize_t header_to_string(ustring line);
+    ssize_t package_to_string(ustring line);
     void show_users();
 };
 
 class PingReqPackage : public PackageTemplate {
   public:
     PingReqPackage();
-    ssize_t header_to_string(ustring line);
+    ssize_t package_to_string(ustring line);
 };
 
 class PingBackPackage : public PackageTemplate {
   public:
     PingBackPackage();
-    ssize_t header_to_string(ustring line);
+    ssize_t package_to_string(ustring line);
 };
 
 class InviteOpponentPackage : public PackageTemplate {
@@ -181,7 +181,7 @@ class InviteOpponentPackage : public PackageTemplate {
 
     std::string cliente;
 
-    ssize_t header_to_string(ustring line);
+    ssize_t package_to_string(ustring line);
 };
 
 class InviteOpponentAckPackage : public PackageTemplate {
@@ -190,7 +190,7 @@ class InviteOpponentAckPackage : public PackageTemplate {
     char *ip;
     int port;
     InviteOpponentAckPackage(int r);
-    ssize_t header_to_string(ustring line);
+    ssize_t package_to_string(ustring line);
     void string_to_header(ustring recvline);
 };
 
@@ -199,7 +199,7 @@ class SendMovePackage : public PackageTemplate {
     int r, c;
     SendMovePackage();
     SendMovePackage(int r, int c);
-    ssize_t header_to_string(ustring line);
+    ssize_t package_to_string(ustring line);
     void string_to_header(ustring recvline);
 };
 
@@ -207,7 +207,7 @@ class EndMatchPackage : public PackageTemplate {
   public:
     int pont;
     EndMatchPackage(int p);
-    ssize_t header_to_string(ustring line);
+    ssize_t package_to_string(ustring line);
 };
 
 class ReconnectPackage : public PackageTemplate {
@@ -217,7 +217,7 @@ class ReconnectPackage : public PackageTemplate {
 
     std::string username;
 
-    ssize_t header_to_string(ustring line);
+    ssize_t package_to_string(ustring line);
 };
 
 #endif /* ifndef PACKAGES_HPP */

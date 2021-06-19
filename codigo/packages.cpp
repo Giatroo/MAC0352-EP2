@@ -17,14 +17,14 @@
 FixedHeader::FixedHeader() { }
 
 FixedHeader::FixedHeader(ustring recvline) {
-    this->header_type = recvline[0];
+    this->package_type = recvline[0];
     this->remaning_length = byte_str_to_int(recvline, 1);
 }
 
-ustring FixedHeader::header_to_string() {
+ustring FixedHeader::package_to_string() {
     ustring fixed_header_str;
     fixed_header_str = (ustring) malloc(3 * sizeof(uchar));
-    fixed_header_str[0] = this->header_type;
+    fixed_header_str[0] = this->package_type;
     ustring temp = int_to_2byte_str(this->remaning_length);
     fixed_header_str[1] = temp[0];
     fixed_header_str[2] = temp[1];
@@ -34,7 +34,7 @@ ustring FixedHeader::header_to_string() {
 }
 
 void FixedHeader::write(ustring line, int &pos) {
-    ustring temp = header_to_string();
+    ustring temp = package_to_string();
     for (pos = 0; pos < 3; ++pos) line[pos] = temp[pos];
     free(temp);
 }
@@ -56,12 +56,12 @@ CreateUserPackage::CreateUserPackage(ustring recvline) {
     read_string(recvline, pos, this->password);
 }
 
-ssize_t CreateUserPackage::header_to_string(ustring line) {
+ssize_t CreateUserPackage::package_to_string(ustring line) {
     int name_len = this->username.size();
     int pwd_len = this->password.size();
     int total_len = name_len + pwd_len + 4;
 
-    this->fixed_header.header_type = CREATE_USER_PACKAGE;
+    this->fixed_header.package_type = CREATE_USER_PACKAGE;
     this->fixed_header.remaning_length = total_len;
 
     int pos;
@@ -74,7 +74,7 @@ ssize_t CreateUserPackage::header_to_string(ustring line) {
 
 // CREATE USER ACK PACKAGE
 CreateUserAckPackage::CreateUserAckPackage(byte return_code) {
-    this->fixed_header.header_type = CREATE_USER_ACK_PACKAGE;
+    this->fixed_header.package_type = CREATE_USER_ACK_PACKAGE;
     this->fixed_header.remaning_length = 1;
     this->return_code = return_code;
 }
@@ -85,8 +85,8 @@ CreateUserAckPackage::CreateUserAckPackage(ustring recvline) {
     this->return_code = recvline[pos];
 }
 
-ssize_t CreateUserAckPackage::header_to_string(ustring line) {
-    this->fixed_header.header_type = CREATE_USER_ACK_PACKAGE;
+ssize_t CreateUserAckPackage::package_to_string(ustring line) {
+    this->fixed_header.package_type = CREATE_USER_ACK_PACKAGE;
     this->fixed_header.remaning_length = 1;
 
     int pos;
@@ -109,12 +109,12 @@ LoginPackage::LoginPackage(ustring recvline) {
     read_string(recvline, pos, this->user_password);
 }
 
-ssize_t LoginPackage::header_to_string(ustring line) {
+ssize_t LoginPackage::package_to_string(ustring line) {
     int login_len = this->user_login.size();
     int password_len = this->user_password.size();
     int total_len = login_len + password_len + 4;
 
-    this->fixed_header.header_type = LOGIN_PACKAGE;
+    this->fixed_header.package_type = LOGIN_PACKAGE;
     this->fixed_header.remaning_length = total_len;
 
     int pos;
@@ -136,8 +136,8 @@ LoginAckPackage::LoginAckPackage(ustring recvline) {
     this->return_code = recvline[pos++];
 }
 
-ssize_t LoginAckPackage::header_to_string(ustring line) {
-    this->fixed_header.header_type = LOGIN_ACK_PACKAGE;
+ssize_t LoginAckPackage::package_to_string(ustring line) {
+    this->fixed_header.package_type = LOGIN_ACK_PACKAGE;
     this->fixed_header.remaning_length = 1;
 
     int pos;
@@ -153,8 +153,8 @@ LogoutPackage::LogoutPackage(ustring recvline) {
     this->fixed_header = FixedHeader(recvline);
 }
 
-ssize_t LogoutPackage::header_to_string(ustring line) {
-    this->fixed_header.header_type = LOGOUT_PACKAGE;
+ssize_t LogoutPackage::package_to_string(ustring line) {
+    this->fixed_header.package_type = LOGOUT_PACKAGE;
     this->fixed_header.remaning_length = 0;
 
     int pos = 0;
@@ -177,12 +177,12 @@ ChangePasswordPackage::ChangePasswordPackage(ustring recvline) {
     read_string(recvline, pos, this->new_password);
 }
 
-ssize_t ChangePasswordPackage::header_to_string(ustring line) {
+ssize_t ChangePasswordPackage::package_to_string(ustring line) {
     int cur_password_len = this->cur_password.size();
     int new_password_len = this->new_password.size();
     int total_len = cur_password_len + new_password_len + 4;
 
-    this->fixed_header.header_type = CHANGE_PASSWORD_PACKAGE;
+    this->fixed_header.package_type = CHANGE_PASSWORD_PACKAGE;
     this->fixed_header.remaning_length = total_len;
 
     int pos = 0;
@@ -204,8 +204,8 @@ ChangePasswordAckPackage::ChangePasswordAckPackage(ustring recvline) {
     this->return_code = recvline[pos++];
 }
 
-ssize_t ChangePasswordAckPackage::header_to_string(ustring line) {
-    this->fixed_header.header_type = CHANGE_PASSWORD_ACK_PACKAGE;
+ssize_t ChangePasswordAckPackage::package_to_string(ustring line) {
+    this->fixed_header.package_type = CHANGE_PASSWORD_ACK_PACKAGE;
     this->fixed_header.remaning_length = 1;
 
     int pos = 0;
@@ -221,8 +221,8 @@ ReqConnectedUsersPackage::ReqConnectedUsersPackage(ustring recvline) {
     this->fixed_header = FixedHeader(recvline);
 }
 
-ssize_t ReqConnectedUsersPackage::header_to_string(ustring line) {
-    this->fixed_header.header_type = REQUEST_ALL_CONNECTED_USERS_PACKAGE;
+ssize_t ReqConnectedUsersPackage::package_to_string(ustring line) {
+    this->fixed_header.package_type = REQUEST_ALL_CONNECTED_USERS_PACKAGE;
     this->fixed_header.remaning_length = 0;
 
     int pos = 0;
@@ -253,13 +253,13 @@ ResConnectedUsersPackage::ResConnectedUsersPackage(ustring recvline) {
 }
 // ResConnectedUsersPackage::~ResConnectedUsersPackage() { }
 
-ssize_t ResConnectedUsersPackage::header_to_string(ustring line) {
+ssize_t ResConnectedUsersPackage::package_to_string(ustring line) {
     int total_len = 1;
     for (int i = 0; i < *total_users; i++) {
         total_len += strlen(users[i]->name) + 2 + 3;
     }
 
-    this->fixed_header.header_type = RESPONSE_ALL_CONNECTED_USERS_PACKAGE;
+    this->fixed_header.package_type = RESPONSE_ALL_CONNECTED_USERS_PACKAGE;
     this->fixed_header.remaning_length = total_len;
 
     int pos = 0;
@@ -298,8 +298,8 @@ ReqClassificationsPackage::ReqClassificationsPackage(ustring recvline) {
     this->fixed_header = FixedHeader(recvline);
 }
 
-ssize_t ReqClassificationsPackage::header_to_string(ustring line) {
-    this->fixed_header.header_type = REQUEST_CLASSIFICATIONS_PACKAGE;
+ssize_t ReqClassificationsPackage::package_to_string(ustring line) {
+    this->fixed_header.package_type = REQUEST_CLASSIFICATIONS_PACKAGE;
     this->fixed_header.remaning_length = 0;
 
     int pos = 0;
@@ -327,13 +327,13 @@ ResClassificationsPackage::ResClassificationsPackage(ustring recvline) {
     }
 }
 
-ssize_t ResClassificationsPackage::header_to_string(ustring line) {
+ssize_t ResClassificationsPackage::package_to_string(ustring line) {
     int total_len = 1;
     for (int i = 0; i < *total_users; i++) {
         total_len += strlen(users[i]->name) + 2 + 1;
     }
 
-    this->fixed_header.header_type = RESPONSE_CLASSIFICATIONS_PACKAGE;
+    this->fixed_header.package_type = RESPONSE_CLASSIFICATIONS_PACKAGE;
     this->fixed_header.remaning_length = total_len;
 
     int pos = 0;
@@ -364,23 +364,23 @@ void ResClassificationsPackage::show_users() {
     }
 }
 
-ssize_t PingReqPackage::header_to_string(ustring line) {
-    line[0] = this->fixed_header.header_type;
+ssize_t PingReqPackage::package_to_string(ustring line) {
+    line[0] = this->fixed_header.package_type;
     line[1] = line[2] = 0;
     return 3;
 }
-PingReqPackage::PingReqPackage() { fixed_header.header_type = PINGREQ_PACKAGE; }
+PingReqPackage::PingReqPackage() { fixed_header.package_type = PINGREQ_PACKAGE; }
 
-ssize_t PingBackPackage::header_to_string(ustring line) {
-    line[0] = this->fixed_header.header_type;
+ssize_t PingBackPackage::package_to_string(ustring line) {
+    line[0] = this->fixed_header.package_type;
     line[1] = line[2] = 0;
     return 3;
 }
 PingBackPackage::PingBackPackage() {
-    fixed_header.header_type = PINGBACK_PACKAGE;
+    fixed_header.package_type = PINGBACK_PACKAGE;
 }
 
-ssize_t InviteOpponentPackage::header_to_string(ustring line) {
+ssize_t InviteOpponentPackage::package_to_string(ustring line) {
     int pos = 0;
     this->fixed_header.write(line, pos);
     write_string(line, pos, this->cliente);
@@ -388,7 +388,7 @@ ssize_t InviteOpponentPackage::header_to_string(ustring line) {
 }
 InviteOpponentPackage::InviteOpponentPackage(std::string c) {
     this->cliente = c;
-    this->fixed_header.header_type = (byte) INVITE_OPPONENT_PACKAGE;
+    this->fixed_header.package_type = (byte) INVITE_OPPONENT_PACKAGE;
     this->fixed_header.remaning_length = this->cliente.size() + 2;
 }
 InviteOpponentPackage::InviteOpponentPackage(ustring recvline) {
@@ -397,8 +397,8 @@ InviteOpponentPackage::InviteOpponentPackage(ustring recvline) {
     read_string(recvline, pos, this->cliente);
 }
 
-ssize_t InviteOpponentAckPackage::header_to_string(ustring line) {
-    line[0] = this->fixed_header.header_type;
+ssize_t InviteOpponentAckPackage::package_to_string(ustring line) {
+    line[0] = this->fixed_header.package_type;
     line[3] = (byte) resp;
     if (resp == 0) {
         line[1] = 0;
@@ -430,11 +430,11 @@ InviteOpponentAckPackage::InviteOpponentAckPackage(int r) {
     resp = r;
     port = 0;
     ip = (char *) malloc(sizeof(char));
-    fixed_header.header_type = (byte) INVITE_OPPONENT_ACK_PACKAGE;
+    fixed_header.package_type = (byte) INVITE_OPPONENT_ACK_PACKAGE;
 }
 
-ssize_t SendMovePackage::header_to_string(ustring line) {
-    line[0] = this->fixed_header.header_type;
+ssize_t SendMovePackage::package_to_string(ustring line) {
+    line[0] = this->fixed_header.package_type;
     line[1] = (byte) r;
     line[2] = (byte) c;
     return 3;
@@ -447,21 +447,21 @@ void SendMovePackage::string_to_header(ustring recvline) {
 
 SendMovePackage::SendMovePackage(int r, int c) {
     this->r = r, this->c = c;
-    fixed_header.header_type = (byte) SEND_MOVE_PACKAGE;
+    fixed_header.package_type = (byte) SEND_MOVE_PACKAGE;
 }
 SendMovePackage::SendMovePackage() {
     this->r = 0, this->c = 0;
-    fixed_header.header_type = (byte) SEND_MOVE_PACKAGE;
+    fixed_header.package_type = (byte) SEND_MOVE_PACKAGE;
 }
 
-ssize_t EndMatchPackage::header_to_string(ustring line) {
-    line[0] = this->fixed_header.header_type;
+ssize_t EndMatchPackage::package_to_string(ustring line) {
+    line[0] = this->fixed_header.package_type;
     line[1] = pont;
     return 2;
 }
 EndMatchPackage::EndMatchPackage(int p) {
     pont = p;
-    fixed_header.header_type = (byte) END_MATCH_PACKAGE;
+    fixed_header.package_type = (byte) END_MATCH_PACKAGE;
 }
 
 ReconnectPackage::ReconnectPackage(std::string username) {
@@ -475,8 +475,8 @@ ReconnectPackage::ReconnectPackage(ustring recvline) {
 }
 
 
-ssize_t ReconnectPackage::header_to_string(ustring line) {
-    this->fixed_header.header_type = RECONNECT_PACKAGE;
+ssize_t ReconnectPackage::package_to_string(ustring line) {
+    this->fixed_header.package_type = RECONNECT_PACKAGE;
     this->fixed_header.remaning_length = 2 + this->username.size();
 
     int pos = 0;

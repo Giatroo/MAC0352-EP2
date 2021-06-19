@@ -53,7 +53,7 @@ InviteOpponentAckPackage invite_opponent(int sockfd, int uifd) {
     unsigned char sndline[MAXLINE + 1], recvline[MAXLINE + 1];
     std::cin >> client_name;
     InviteOpponentPackage p(client_name);
-    int n = p.header_to_string(sndline);
+    int n = p.package_to_string(sndline);
 
     if (DEBUG) print_in_hex(sndline, n);
     if (write(sockfd, sndline, n) < 0) {
@@ -320,7 +320,7 @@ int send_move(bool x, int connfd) {
 
     SendMovePackage p(r, c);
     unsigned char sndline[MAXLINE + 1];
-    ssize_t n = p.header_to_string(sndline);
+    ssize_t n = p.package_to_string(sndline);
 
     if (write(connfd, sndline, n) < 0) {
         std::cout << "Erro ao enviar pacote" << std::endl;
@@ -371,7 +371,7 @@ int get_move(bool x, ustring recvline) {
 void surrender(int connfd) {
     SendMovePackage p(0, 0);
     unsigned char sndline[MAXLINE + 1];
-    ssize_t n = p.header_to_string(sndline);
+    ssize_t n = p.package_to_string(sndline);
 
     if (write(connfd, sndline, n) < 0) {
         std::cout << "Erro ao enviar pacote :(" << std::endl;
@@ -387,7 +387,7 @@ void end_match(int score1, int pipe) {
     */
     EndMatchPackage p(score1);
     unsigned char sndline[MAXLINE + 1];
-    ssize_t n = p.header_to_string(sndline);
+    ssize_t n = p.package_to_string(sndline);
     if (write(pipe, sndline, n) < 0) {
         std::cout << "Erro ao direcionar à saída :(" << std::endl;
         exit(11);
@@ -398,7 +398,7 @@ void pingback(int fd) {
     PingBackPackage p;
     unsigned char sndline[MAXLINE + 1];
 
-    ssize_t n = p.header_to_string(sndline);
+    ssize_t n = p.package_to_string(sndline);
     if (write(fd, sndline, n) < 0) {
         std::cout << "Erro ao direcionar à saída :(" << std::endl;
         exit(11);
@@ -408,7 +408,7 @@ void pingback(int fd) {
 void get_ping(int connfd) {
     PingReqPackage p;
     unsigned char sndline[MAXLINE + 1];
-    ssize_t n = p.header_to_string(sndline);
+    ssize_t n = p.package_to_string(sndline);
     if (write(connfd, sndline, n) < 0) {
         std::cout << "Erro no get_ping" << std::endl;
         return;
