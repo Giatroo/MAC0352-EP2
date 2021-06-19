@@ -103,8 +103,6 @@ void cmd_switch() {
                 int pont =
                     start_match(false, ((p.resp & (1 << 1)) == 0),
                                 ((p.resp & (1 << 2)) == 0), p.port, p.ip);
-                kill(*pid_jogo_ui, SIGTERM);
-                kill(*pid_jogo_latencia, SIGTERM);
                 end_match(pont, sockfd);
             } else {
                 printf("Usuário recusou o jogo!\n");
@@ -127,8 +125,6 @@ void cmd_switch() {
             if ((resp & (1 << 0))) {
                 int pont = start_match(true, (resp & (1 << 1)),
                                        (resp & (1 << 2)), p.port, NULL);
-                kill(*pid_jogo_ui, SIGTERM);
-                kill(*pid_jogo_latencia, SIGTERM);
                 end_match(pont, sockfd);
             }
 
@@ -139,8 +135,6 @@ void cmd_switch() {
             /* TODO: Preciso dar free em algo? <12-06-21, Paiolla> */
             close(sockfd);
             close(uifds[0]), close(uifds[1]);
-            global_free(pid_jogo_ui, sizeof(pid_t));
-            global_free(pid_jogo_latencia, sizeof(pid_t));
             std::cout << "Matou todo mundo" << std::endl;
             exit(0);
         }
@@ -243,12 +237,12 @@ void *entrada(void *arg) {
         }
         if (!voltou) {
             cout << "Servidor caiu!" << endl;
+            close(sockfd);
+            exit (0);
             break;
         }
         sleep(1);
     }
-    kill(*pid_jogo_ui, SIGTERM);
-    kill(*pid_jogo_latencia, SIGTERM);
     return NULL;
 }
 
@@ -297,7 +291,7 @@ int main(int argc, char **argv) {
         exit(1);
     }
     if (pthread_create(&entrada_thread, NULL, entrada, NULL)) {
-        printf("Erro ao criar thread UI\n");
+        printf("Erro ao criar thread Entrada\n");
         exit(1);
     }
 

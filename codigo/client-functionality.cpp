@@ -90,11 +90,123 @@ int answer_opponent(std::string recvline) {
         return 0;
 }
 
+int matchfd;
+int trava_shell;
+struct timespec start_delay;
+double delay[3];
+int delay_ind;
+int delay_fds[2];
+
+int * acabou;
+
+Table t;
+pthread_t ui_match_thread, entrada_match_thread, latency_match_thread;
+    
+void * match_latency(void * args){
+    // Latencia
+    while (true) {
+        clock_gettime(CLOCK_MONOTONIC, &start_delay);
+        get_ping(matchfd);
+        sleep(3);
+    }
+    std::cout << "Algo deu ruim" << std::endl;
+    quit(0);
+}
+
+void * match_ui(void * args){
+    bool * aux_args = (bool *)args;
+    bool moving_first = aux_args[0];
+    bool x = aux_args[1];
+    /*
+        args é moving_first e x
+    */
+    if (moving_first) {
+        trava_shell = 0;
+        std::cout << "JogoDaVelha> " << std::flush;
+    } else {
+        trava_shell = 1;
+    }
+
+    std::string comando;
+    while (std::cin >> comando) {
+        if (trava_shell) continue;
+        if (comando == "send") {
+            int pont;
+            if ((pont = send_move(x, matchfd)) > -1) {
+                *acabou = pont;
+                quit(1);
+                return NULL;
+            } else if (pont == -1) {
+                trava_shell = 1;
+                continue;
+            }
+        } else if (comando == "end") {
+            surrender(matchfd);
+            *acabou = 0;
+            quit(1);
+            return NULL;
+        } else if (comando == "delay") {
+            int i = delay_ind;
+            std::cout << delay[(i + 2) % 3] << "ms" << std::endl;
+            std::cout << delay[(i + 1) % 3] << "ms" << std::endl;
+            std::cout << delay[i] << "ms" << std::endl;
+        } else {
+            std::cout << "Comando inválido" << std::endl;
+        }
+        std::cout << "JogoDaVelha> " << std::flush;
+    }
+
+    std::cout << "Algo deu ruim" << std::endl;
+    *acabou = 0;
+    quit(1);
+}
+
+void * match_entrada(void * args){
+    bool * aux_args = (bool *)args;
+    bool moving_first = aux_args[0];
+    bool x = aux_args[1];
+    ssize_t n;
+    unsigned char recvline[MAXLINE + 1];
+    
+    while ((n = read(matchfd, recvline, MAXLINE)) > 0) {
+        recvline[n] = 0;
+        // fprintf(stdout, "Recebido: ");
+        // print_in_hex(recvline, n);
+
+        if ((int) recvline[0] == PINGREQ_PACKAGE)
+            pingback(matchfd);
+        else if ((int) recvline[0] == PINGBACK_PACKAGE) {
+            struct timespec finish;
+            clock_gettime(CLOCK_MONOTONIC, &finish);
+            double elapsed = (finish.tv_sec - (start_delay).tv_sec);
+            elapsed += (finish.tv_nsec - (start_delay).tv_nsec) / 1000000000.0;
+
+            delay[delay_ind] = 1000 * elapsed;
+            delay_ind = (delay_ind + 1) % 3;
+        } else if ((int) recvline[0] == SEND_MOVE_PACKAGE) {
+            int pont;
+            if ((pont = get_move(x, recvline)) != -1) {
+                *acabou = pont;
+                quit(0);
+                return NULL;
+            }
+            trava_shell = 0;
+        }
+    }
+
+    std::cout << "Algo deu ruim" << std::endl;
+    quit(0);
+}
+
 int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
     unsigned char recvline[MAXLINE + 1];
-    int connfd, n;
+    int n;
     struct sockaddr_in servaddr, client_addr;
     socklen_t clen;
+    acabou = (int *)global_malloc(sizeof(int));
+    *acabou = -1;
+    trava_shell = 0;
+    delay_ind = 0;
 
     std::cout << "O jogo comecou!!" << std::endl;
     if (tipo) {
@@ -120,7 +232,7 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
             exit(4);
         }
 
-        if ((connfd = accept(listenfd, (struct sockaddr *) &client_addr,
+        if ((matchfd = accept(listenfd, (struct sockaddr *) &client_addr,
                              &clen)) == -1) {
             perror("accept :(\n");
             exit(5);
@@ -131,7 +243,7 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
         servaddr.sin_family = AF_INET;
         servaddr.sin_port = htons(port);
 
-        if ((connfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        if ((matchfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
             fprintf(stderr, "socket error :( \n");
             exit(5);
         }
@@ -141,126 +253,74 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
             exit(5);
         }
 
-        if (connect(connfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) <
+        if (connect(matchfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) <
             0) {
             fprintf(stderr, "connect error :(\n");
             exit(5);
         }
     }
 
-    std::cout << "JogoDaVelha> connected" << std::endl;
-
     pid_t childpid;
+    if((childpid = fork()) == 0){
+        std::cout << "JogoDaVelha> connected" << std::endl;
 
-    int *trava_shell = (int *) global_malloc(sizeof(int));
+        /*
+            TODO SEMAFORIZAR?
+        */
+        if (pipe(delay_fds)) {
+            fprintf(stderr, "Erro ao criar pipe\n");
+            exit(1);
+        }
 
-    /*
-        TODO SEMAFORIZAR?
-    */
-    double *delay = (double *) global_malloc(3 * sizeof(double));
-    int *delay_ind = (int *) global_malloc(sizeof(int));
-    *delay_ind = 0;
-    struct timespec *start =
-        (struct timespec *) global_malloc(sizeof(struct timespec));
 
-    int delay_fds[2];
-    if (pipe(delay_fds)) {
-        fprintf(stderr, "Erro ao criar pipe\n");
-        exit(1);
+        t.build();
+        t.print();
+
+        bool args[2] = {moving_first, x};
+
+        if (pthread_create(&ui_match_thread, NULL, match_ui, &args)) {
+            printf("Erro ao criar thread UI\n");
+            exit(1);
+        }
+        if (pthread_create(&entrada_match_thread, NULL, match_entrada, &args)) {
+            printf("Erro ao criar thread UI\n");
+            exit(1);
+        }
+        if (pthread_create(&latency_match_thread, NULL, match_latency, NULL)) {
+            printf("Erro ao criar thread UI\n");
+            exit(1);
+        }
+
+
+        if (pthread_join(ui_match_thread, NULL)) {
+            printf("Erro ao dar join na thread ui\n");
+            exit(1);
+        }
+        if (pthread_join(entrada_match_thread, NULL)) {
+            printf("Erro ao dar join na thread entrada\n");
+            exit(1);
+        }
+        if (pthread_join(latency_match_thread, NULL)) {
+            printf("Erro ao dar join na thread latency\n");
+            exit(1);
+        }
+        close(matchfd);
     }
-
-    Table *t = (Table *) global_malloc(sizeof(Table));
-    (*t).build();
-    (*t).print();
-
-    if ((childpid = fork()) == 0) {
-        *pid_jogo_latencia = getpid();
-
-        // Latencia
-        while (true) {
-            clock_gettime(CLOCK_MONOTONIC, start);
-            get_ping(connfd);
-            sleep(3);
+    else{
+        while(*acabou == -1){
+            sleep(1);
         }
-
-        quit(trava_shell, t, connfd);
-        return 0;
-    } else if ((childpid = fork()) == 0) {
-        *pid_jogo_ui = getpid();
-
-        // UI
-        if (moving_first) {
-            *trava_shell = 0;
-            std::cout << "JogoDaVelha> " << std::flush;
-        } else {
-            *trava_shell = 1;
-        }
-
-        std::string comando;
-        while (std::cin >> comando) {
-            if (*trava_shell) continue;
-            if (comando == "send") {
-                int acabou;
-                if ((acabou = send_move(t, x, connfd)) > -1) {
-                    quit(trava_shell, t, connfd);
-                    return acabou;
-                } else if (acabou == -1) {
-                    *trava_shell = 1;
-                    continue;
-                }
-            } else if (comando == "end") {
-                surrender(connfd);
-                quit(trava_shell, t, connfd);
-                return 0;
-            } else if (comando == "delay") {
-                int i = *delay_ind;
-                std::cout << delay[(i + 2) % 3] << "ms" << std::endl;
-                std::cout << delay[(i + 1) % 3] << "ms" << std::endl;
-                std::cout << delay[i] << "ms" << std::endl;
-            } else {
-                std::cout << "Comando inválido" << std::endl;
-            }
-            std::cout << "JogoDaVelha> " << std::flush;
-        }
-        quit(trava_shell, t, connfd);
-        return 0;
-    } else {
-        // *pid_jogo_pai = getpid();
-        // Entrada
-        while ((n = read(connfd, recvline, MAXLINE)) > 0) {
-            recvline[n] = 0;
-            // fprintf(stdout, "Recebido: ");
-            // print_in_hex(recvline, n);
-
-            if ((int) recvline[0] == PINGREQ_PACKAGE)
-                pingback(connfd);
-            else if ((int) recvline[0] == PINGBACK_PACKAGE) {
-                struct timespec finish;
-                clock_gettime(CLOCK_MONOTONIC, &finish);
-                double elapsed = (finish.tv_sec - (*start).tv_sec);
-                elapsed += (finish.tv_nsec - (*start).tv_nsec) / 1000000000.0;
-
-                delay[*delay_ind] = 1000 * elapsed;
-                *delay_ind = (*delay_ind + 1) % 3;
-            } else if ((int) recvline[0] == SEND_MOVE_PACKAGE) {
-                int acabou;
-                if ((acabou = get_move(t, x, recvline)) != -1) {
-                    quit(trava_shell, t, connfd);
-                    return acabou;
-                }
-                *trava_shell = 0;
-            }
-        }
-
-        quit(trava_shell, t, connfd);
-        return 0;
     }
+    int pont = *acabou;
+    global_free(acabou, sizeof(int));
+
+    return pont;
 }
 
-int send_move(Table *t, bool x, int connfd) {
+int send_move(bool x, int connfd) {
     int r, c;
     std::cin >> r >> c;
-    if ((*t).update(r, c, x) == 0) {
+    if ((t).update(r, c, x) == 0) {
         std::cout << "Posição ocupada! Faça um outro movimento" << std::endl;
         return -2;
     }
@@ -274,19 +334,19 @@ int send_move(Table *t, bool x, int connfd) {
         exit(11);
     }
     std::cout << "Você jogou na casa (" << r << ", " << c << ")" << std::endl;
-    (*t).print();
+    (t).print();
 
-    if ((*t).winner() == 1) {
+    if ((t).winner() == 1) {
         std::cout << "Você ganhou!!" << std::endl;
         return 2;
-    } else if ((*t).winner() == 2) {
+    } else if ((t).winner() == 2) {
         std::cout << "Empatou!!" << std::endl;
         return 1;
     }
     return -1;
 }
 
-int get_move(Table *t, bool x, ustring recvline) {
+int get_move(bool x, ustring recvline) {
     SendMovePackage p;
     p.string_to_header(recvline);
 
@@ -300,16 +360,16 @@ int get_move(Table *t, bool x, ustring recvline) {
     std::cout << "Outro jogador jogou na casa (" << p.r << ", " << p.c << ")"
               << std::endl;
 
-    if ((*t).update(p.r, p.c, !x) == 0) {
+    if (t.update(p.r, p.c, !x) == 0) {
         std::cout << "Erro no jogo da velha!" << std::endl;
         exit(12);
     }
-    (*t).print();
+    t.print();
 
-    if ((*t).winner() == 1) {
+    if (t.winner() == 1) {
         std::cout << "Outro jogador ganhou!!" << std::endl;
         return 0;
-    } else if ((*t).winner() == 2) {
+    } else if (t.winner() == 2) {
         std::cout << "Empatou!!" << std::endl;
         return 2;
     }
@@ -365,10 +425,8 @@ void get_ping(int connfd) {
     }
 }
 
-void quit(int *trava, Table *t, int connfd) {
-    global_free(trava, sizeof(int));
-    global_free(t, sizeof(Table));
-    close(connfd);
+void quit(int ui) {
+    exit(0);
 }
 
 #endif /* ifndef CLIENT_FUNCTIONALITY_CPP */

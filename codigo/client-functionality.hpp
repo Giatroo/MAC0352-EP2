@@ -73,11 +73,11 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char * ip);
 
 // Envia um movimento na linha row e coluna col.
 // row e col devem ser números de 0 a 2.
-int send_move(Table * t, bool x, int connfd);
+int send_move(bool x, int connfd);
 
 // Pega o movimento recebido em recvline, atualiza na tabela e checa se
 // houve um vencedor. Retorna 0 se o outro jogador desistiu e 1 caso contrário
-int get_move(Table * t, bool x, ustring recvline);
+int get_move(bool x, ustring recvline);
 
 // O jogador desiste da partida (perdendo automaticamente).
 void surrender(int connfd);
@@ -92,6 +92,6 @@ void pingback(int pipe);
 void get_ping(int connfd);
 
 // Encerra as operações do cliente (pode ser chamada apenas depois de logout).
-void quit(int *trava, Table *t, int connfd);
+void quit(int ui);
 
 #endif /* ifndef CLIENT_FUNCTIONALITY_HPP */
