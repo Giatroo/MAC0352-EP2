@@ -159,20 +159,17 @@ void cmd_switch(ustring recvline, int n, int connfd) {
                 int opponent_index =
                     users[*current_user]->client_invitation / (1 << 5);
                 user_t *opponent = find_user(opponent_index);
+                log_struct.player1_ip = users[*current_user]->ip;
+                log_struct.player1_name = users[*current_user]->name;
+                log_struct.player2_ip = opponent->ip;
+                log_struct.player2_name = opponent->name;
 
                 if (recvline[1] == 2) { // eu ganhei
-                    log_struct.winner_ip = users[*current_user]->ip;
                     log_struct.winner_name = users[*current_user]->name;
-                    log_struct.loser_ip = opponent->ip;
-                    log_struct.loser_name = opponent->name;
                 } else if (recvline[1] == 1) { // empate
-
+                    log_struct.winner_name = "";
                 } else if (recvline[1] == 0) { // eu perdi
-                    log_struct.loser_ip = users[*current_user]->ip;
-                    log_struct.loser_name = users[*current_user]->name;
-                    log_struct.winner_ip = opponent->ip;
                     log_struct.winner_name = opponent->name;
-
                 }
 
                 write_log_line(MATCH_FINISHED, log_struct);
@@ -209,7 +206,7 @@ void * heartbeat_handler_thread(void * args){
 
     log_struct_t log_struct;
     log_struct.client_ip = inet_ntoa(client_addr.sin_addr);
-    write_log_line(CLIENT_DISCONNECT, log_struct);
+    write_log_line(UNEXPECTED_DISCONNECT, log_struct);
 
     printf("[Uma conexão fechada (PID = %d)]\n", getpid());
     exit (0);

@@ -101,7 +101,7 @@ int * acabou;
 
 Table t;
 pthread_t ui_match_thread, entrada_match_thread, latency_match_thread;
-    
+
 void * match_latency(void * args){
     // Latencia
     while (true) {
@@ -167,7 +167,7 @@ void * match_entrada(void * args){
     bool x = aux_args[1];
     ssize_t n;
     unsigned char recvline[MAXLINE + 1];
-    
+
     while ((n = read(matchfd, recvline, MAXLINE)) > 0) {
         recvline[n] = 0;
         // fprintf(stdout, "Recebido: ");
@@ -371,7 +371,7 @@ int get_move(bool x, ustring recvline) {
         return 0;
     } else if (t.winner() == 2) {
         std::cout << "Empatou!!" << std::endl;
-        return 2;
+        return 1;
     }
 
     std::cout << "JogoDaVelha> " << std::flush;
