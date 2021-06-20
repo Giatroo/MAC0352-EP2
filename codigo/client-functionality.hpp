@@ -56,27 +56,26 @@ void show_classifications(int n);
 // Retorna uma porta que está livre
 int get_free_port();
 
-// Convida user para jogar. Se ele não estiver online, não existir ou estiver em
-// partida, retorna false automaticamente. Caso contrário, o servidor irá
-// automaticamente lançar os dois jogadores em um lobby para decidir quem será o
-// primeiro a jogar e quem será o X e começa a partida.
-// O jogador que convidou se torna o host da sessão e deve chamar end_match()
-// para enviar os resultados da partida para o servidor.
+// Envia um convite para o jogador e retorna o pacote da resposta
+// desse jogador
 InviteOpponentAckPackage invite_opponent(int sockfd, int uifd);
 
 // Prepara a resposta a um convite e retorna essa resposta
 int answer_opponent(std::string recvline);
 
 // Começa a partida após definir quem é o primeiro a jogar e quem será o X.
+// A variável tipo é pra saber se é o convidado ou não.
 // Retorna a pontuação desse jogador no jogo ou -1 se houve um erro.
 int start_match(bool tipo, bool moving_first, bool x, int port, char * ip);
 
 // Envia um movimento na linha row e coluna col.
-// row e col devem ser números de 0 a 2.
+// row e col devem ser números de 1 a 3. Retorna a pontuação do jogador caso
+// o jogo tenha acabado ou -1 caso o jogo não acabou
 int send_move(bool x, int connfd);
 
 // Pega o movimento recebido em recvline, atualiza na tabela e checa se
-// houve um vencedor. Retorna 0 se o outro jogador desistiu e 1 caso contrário
+// houve um vencedor. Retorna -1 se o jogo não acabou ou a pontuação do jogador
+// caso o jogo tenha acabado
 int get_move(bool x, ustring recvline);
 
 // O jogador desiste da partida (perdendo automaticamente).

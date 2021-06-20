@@ -55,23 +55,13 @@ void show_all_connected_users();
 // Mostra os n primeiros classificados ou todos se -1
 void show_classifications(int n);
 
-// Convida client2 para jogar. Se ele não estiver online, não existir ou
-// estiver em partida, retorna false automaticamente. Caso contrário, envia um
-// prompt para o client2 perguntando se ele quer jogar ou não.
+// Recebe um pacote com o nome do usuário a ser convidado e o usuário
+// que convidou
 void invite_opponent(ustring recvline, user_t *invitor_user, int pipe);
 
 // Pega a resposta do cliente convidado, processa ela e comunica o outro
 // processo do servidor dessa resposta
 void process_invitation_ack(ustring recvline, user_t *invited_user);
-
-// Começa a partida entre client1 (quem convidou) e client2. Deve ser chamada
-// depois que invite_opponent(client2) retornou true.
-void start_match(std::string client1, std::string client2);
-
-// Termina a partida entre client1 e client2, cujo score optido pelo client1 é
-// score1. Essa função deve ser chamada pelo client1 (que foi quem fez o
-// convite para a partida) e atualiza os scores de ambos os jogadores.
-void end_match(std::string client1, std::string client2, int score1);
 
 // Pinga o usuário solicitando um pigback para checar se o usuário ainda está
 // conectado ou não. Se sim, retorna true, se não, retorna false.

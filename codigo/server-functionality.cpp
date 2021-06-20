@@ -142,7 +142,6 @@ void cmd_switch(ustring recvline, int n, int connfd) {
             break;
         }
         case INVITE_OPPONENT_PACKAGE: {
-            /* TODO: Semaforizar?  */
             std::cout << "Convidando" << std::endl;
             invite_opponent(recvline, users[*current_user], connfd);
             break;
@@ -221,9 +220,6 @@ void *heartbeat_handler_thread(void *args) {
 void *invitation_handler_thread(void *args) {
     int connfd = *((int *) args);
     while (true) {
-        /*
-            TODO: Semaforizar?
-        */
         if (*current_user == -1) {
             sleep(1);
             continue;
@@ -361,7 +357,7 @@ bool user_login(std::string name, std::string password,
 
     user->connected = true;
     tmp_ip = inet_ntoa(client_addr.sin_addr);
-    for (int i = 0; i < strlen(tmp_ip); i++) user->ip[i] = tmp_ip[i];
+    for (int i = 0; i < (int)strlen(tmp_ip); i++) user->ip[i] = tmp_ip[i];
     user->port = (int) ntohs(client_addr.sin_port);
     user->client_invitation = 0;
     *current_user = find_user_index(user->name);
@@ -488,10 +484,6 @@ void process_invitation_ack(ustring recvline, user_t *invited_user) {
     invitor_user->client_invitation |= (1 << 3);
     // Comunica o processo do invitor de que teve resposta
 }
-
-void start_match(std::string client1, std::string client2) { }
-
-void end_match(std::string client1, std::string client2, int score1) { }
 
 int pingreq(int pipe, int *heartbeat_resp) {
     PingReqPackage p;

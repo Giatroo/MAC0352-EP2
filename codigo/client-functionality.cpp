@@ -265,9 +265,6 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
     if ((childpid = fork()) == 0) {
         std::cout << "JogoDaVelha> connected" << std::endl;
 
-        /*
-            TODO SEMAFORIZAR?
-        */
         if (pipe(delay_fds)) {
             fprintf(stderr, "Erro ao criar pipe\n");
             exit(1);
@@ -385,9 +382,6 @@ void surrender(int connfd) {
 }
 
 void end_match(int score1, int pipe) {
-    /*
-        TODO: implementar a tolerância a erro de queda do servidor
-    */
     EndMatchPackage p(score1);
     unsigned char sndline[MAXLINE + 1];
     ssize_t n = p.package_to_string(sndline);

@@ -146,7 +146,6 @@ void cmd_switch() {
         }
         case EXIT: {
             cout << "Exiting" << endl;
-            /* TODO: Preciso dar free em algo? <12-06-21, Paiolla> */
             close(sockfd);
             close(uifds[0]), close(uifds[1]);
             std::cout << "Matou todo mundo" << std::endl;
