@@ -72,13 +72,16 @@ int main(int argc, char **argv) {
     memset(&client_addr, 0, sizeof(client_addr));
 
     while (1) {
+        struct sockaddr_in client_addr_p;
         socklen_t clen;
 
-        if ((connfd = accept(listenfd, (struct sockaddr *) &client_addr,
+        if ((connfd = accept(listenfd, (struct sockaddr *) &client_addr_p,
                              &clen)) == -1) {
             perror("accept :(\n");
             exit(5);
         }
+
+        client_addr = client_addr_p;
 
         // temp
         if (DEBUG) {

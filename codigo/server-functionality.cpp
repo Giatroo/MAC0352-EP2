@@ -201,8 +201,10 @@ void *heartbeat_handler_thread(void *args) {
         }
     }
 
-    users[*current_user]->connected = false;
-    users[*current_user]->in_match = false;
+    if(*current_user != -1){
+	    users[*current_user]->connected = false;
+	    users[*current_user]->in_match = false;
+    }
 
     close(connfd);
 
@@ -494,7 +496,7 @@ int pingreq(int pipe, int *heartbeat_resp) {
         exit(11);
     }
     *heartbeat_resp = 0;
-    sleep(10);
+    sleep(20);
 
     return *heartbeat_resp;
 }
