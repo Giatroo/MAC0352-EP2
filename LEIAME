@@ -3,10 +3,14 @@ Sistemas Distribuídos do IME-USP, ministrada pelo Prof. Dr. Daniel Macêdo
 Batista. Ele foi realizado pelos alunos Lucas Paiolla Forastiere (NUSP:
 11221911) e Lucas Hiroshi Harada (NUSP: 10737081)
 
-- TODO: atualizar como compilar e executar: <03-06-21, Paiolla> -
 Para compilar os binários basta rodar:
     make
 
-Para executar o ep2:
-    ./ep1 p,
-onde p é a porta utilizada pelo broker.
+Para abrir o servidor, basta executar:
+    ./ep2-server <port>
+onde <port> é a porta na qual o servidor espera ouvir conexões.
+
+Para abrir um cliente, basta executar:
+    ./ep2-client <ip> <port>
+onde <ip> é o ip da máquina do servidor e <port> é a porta na qual esse servidor
+espera ouvir conexões.
