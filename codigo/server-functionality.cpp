@@ -201,9 +201,9 @@ void *heartbeat_handler_thread(void *args) {
         }
     }
 
-    if(*current_user != -1){
-	    users[*current_user]->connected = false;
-	    users[*current_user]->in_match = false;
+    if (*current_user != -1) {
+        users[*current_user]->connected = false;
+        users[*current_user]->in_match = false;
     }
 
     close(connfd);
@@ -243,6 +243,8 @@ void *invitation_handler_thread(void *args) {
                 int resp = users[*current_user]->client_invitation % (1 << 3);
 
                 user_t *invited_user = find_user(invited);
+                debug(invited_user->name);
+                debug(invited_user->ip);
 
                 send_invitation_ack_package(resp, invited_user->ip,
                                             invited_user->port, connfd);
@@ -355,12 +357,16 @@ bool user_login(std::string name, std::string password,
         std::cerr << "Você já está logado" << std::endl;
         return false;
     }
+    char *tmp_ip;
 
     user->connected = true;
-    user->ip = inet_ntoa(client_addr.sin_addr);
+    tmp_ip = inet_ntoa(client_addr.sin_addr);
+    for (int i = 0; i < strlen(tmp_ip); i++) user->ip[i] = tmp_ip[i];
     user->port = (int) ntohs(client_addr.sin_port);
     user->client_invitation = 0;
     *current_user = find_user_index(user->name);
+    debug(user->name);
+    debug(user->ip);
     std::cout << "Logado com sucesso" << std::endl;
     return true;
 }
@@ -424,7 +430,7 @@ void invite_opponent(ustring recvline, user_t *invitor_user, int pipe) {
 
     if (invited_user == nullptr) {
         // O jogador convidado não existe
-        //std::cerr << "O jogador convidado não existe" << std::endl;
+        // std::cerr << "O jogador convidado não existe" << std::endl;
         unsigned char sndline[MAXLINE + 1];
         InviteOpponentAckPackage p(0);
         ssize_t n = p.package_to_string(sndline);

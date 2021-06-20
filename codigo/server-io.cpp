@@ -54,6 +54,7 @@ void deserialize_users() {
         users[i] = (user_t *) global_malloc(sizeof(user_t));
         users[i]->name = (char *) global_malloc(MAX_STR_LEN * sizeof(char));
         users[i]->password = (char *) global_malloc(MAX_STR_LEN * sizeof(char));
+        users[i]->ip = (char *) global_malloc(20 * sizeof(char));
     }
 
     ifstream user_file;
