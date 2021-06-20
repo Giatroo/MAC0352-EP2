@@ -1,3 +1,4 @@
 *.o
 codigo/ep2-server
 codigo/ep2-client
+*.log

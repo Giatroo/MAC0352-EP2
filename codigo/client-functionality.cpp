@@ -206,6 +206,9 @@ int start_match(bool tipo, bool moving_first, bool x, int port, char *ip) {
     trava_shell = 0;
     delay_ind = 0;
 
+    debug(ip);
+    debug(port);
+
     std::cout << "O jogo comecou!!" << std::endl;
     if (tipo) {
         int listenfd;
